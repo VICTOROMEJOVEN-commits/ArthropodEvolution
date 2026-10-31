@@ -8,14 +8,15 @@ using Random=UnityEngine.Random;
 namespace Arthropod {
 // A self-contained, editable vertical slice. Coordinates are in world units.
 public sealed class DemoGame:MonoBehaviour {
- enum Mode {Menu,Intro,Playing,Upgrade,Pause,Options,Result,Credits}
+ enum Mode {Logo,Menu,Intro,Playing,Upgrade,Pause,Options,Result,Credits}
  sealed class Enemy {public GameObject go;public SpriteRenderer sr;public Vector2 pos,dir,target;public float hp,max,speed,damage,timer,cooldown,flash;public int type,phase,attack,frame;public bool dead;}
  sealed class Drop {public SpriteRenderer sr;public Vector2 pos;public int value;}
  sealed class Fx {public SpriteRenderer sr;public Vector2 vel;public float time,total;public Color color;}
  sealed class FloatText {public Vector2 pos;public string text;public Color color;public float time;}
  sealed class Marker {public LineRenderer line;public float time;}
  [Serializable] sealed class Settings {public float music=.55f,effects=.65f,shake=.5f;public bool numbers=true,reducedFlash=false,fullScreen=true;public int best,cap=60;}
- Mode mode=Mode.Menu,returnMode=Mode.Menu;
+ Mode mode=Mode.Logo,returnMode=Mode.Menu;
+ float logoTime;Texture2D logoTexture;
  Settings settings=new Settings();
  Camera cam; Transform world,actors,decorations; SpriteRenderer player,shadow; SpriteRenderer[] parts=new SpriteRenderer[12];
  readonly Dictionary<string,Sprite> sprites=new Dictionary<string,Sprite>();
@@ -32,6 +33,7 @@ public sealed class DemoGame:MonoBehaviour {
  string savePath;
 
  void Awake(){
+  logoTexture=Resources.Load<Texture2D>("Art/arthropod_logo");
   Application.targetFrameRate=60;QualitySettings.vSyncCount=1;Random.InitState(671);
   savePath=Path.Combine(Application.persistentDataPath,"arthropod-demo-v1.json");Load();Application.targetFrameRate=settings.cap;QualitySettings.vSyncCount=0;Screen.fullScreen=settings.fullScreen;
   var old=Camera.main;if(old)Destroy(old.gameObject);
@@ -82,6 +84,7 @@ public sealed class DemoGame:MonoBehaviour {
   Array.Clear(ranks,0,12);Array.Clear(cooldowns,0,5);ranks[0]=1;hp=maxHp=100;clock=0;xp=0;level=1;kills=0;pending=0;totalDamage=0;spawnCredit=0;invulnerable=1;withoutDamage=0;shellTimer=0;boss=null;bossSpawned=elite1=elite2=won=false;pos=new Vector2(0,-10);facing=Vector2.up;cam.transform.position=new Vector3(0,-10,-10);player.enabled=true;mode=Mode.Intro;introTime=0;PlayMusic(gardenTrack);Banner("EL JARDÍN DE LOS DESCARTES",4);UpdatePlayerArt();
  }
  void Update(){
+  if(mode==Mode.Logo){logoTime+=Time.unscaledDeltaTime;if(logoTime>=3.2f||Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape)||Input.GetMouseButtonDown(0))mode=Mode.Menu;return;}
   if(Input.GetKeyDown(KeyCode.Escape)){if(mode==Mode.Playing)mode=Mode.Pause;else if(mode==Mode.Pause)mode=Mode.Playing;else if(mode==Mode.Options)mode=returnMode;else if(mode==Mode.Intro)mode=Mode.Playing;}
   if(mode==Mode.Intro){introTime=Mathf.Min(12,introTime+Time.unscaledDeltaTime);if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)){if(introTime>=12)mode=Mode.Playing;else introTime=Mathf.Min(12,(Mathf.Floor(introTime/4)+1)*4);}UpdatePlayerArt();return;}
   if(mode==Mode.Upgrade){if(Input.GetKeyDown(KeyCode.RightArrow)||Input.GetKeyDown(KeyCode.D))selected=(selected+1)%offers.Length;if(Input.GetKeyDown(KeyCode.LeftArrow)||Input.GetKeyDown(KeyCode.A))selected=(selected+offers.Length-1)%offers.Length;if(Time.unscaledTime>upgradeLock){if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space))Choose(selected);for(int i=0;i<offers.Length;i++)if(Input.GetKeyDown(KeyCode.Alpha1+i))Choose(i);}return;}
@@ -205,6 +208,7 @@ public sealed class DemoGame:MonoBehaviour {
  public void StartPreviews(){StartCoroutine(PreviewSequence());}
  System.Collections.IEnumerator PreviewSequence(){
   Directory.CreateDirectory("Validation/Previews");
+  mode=Mode.Logo;logoTime=1;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/00-logo.png");yield return null;
   mode=Mode.Menu;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/01-menu.png");yield return null;
   mode=Mode.Credits;PlayMusic(creditsTrack);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/07-creditos.png");yield return null;
   StartRun();introTime=12;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/02-cinematica.png");yield return null;
@@ -255,8 +259,20 @@ public sealed class DemoGame:MonoBehaviour {
  void Bar(Rect r,float value,Color color){Box(r,EvolutionData.C("132321"));Box(new Rect(r.x+2,r.y+2,(r.width-4)*Mathf.Clamp01(value),r.height-4),color);Border(r,EvolutionData.C("536b55"));}
  Vector2 ScreenPoint(Vector2 p){Vector3 v=cam.WorldToViewportPoint(p);return new Vector2(v.x*1280,(1-v.y)*720);}
  void OnGUI(){InitGui();GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(Screen.width/1280f,Screen.height/720f,1));
+  if(mode==Mode.Logo){LogoSplash();return;}
   if(mode==Mode.Menu){Menu();return;}if(mode==Mode.Credits){Credits();return;}
   Hud();if(mode==Mode.Intro){Intro();return;}if(mode==Mode.Upgrade){Upgrade();return;}if(mode==Mode.Pause){Pause();return;}if(mode==Mode.Options){Options();return;}if(mode==Mode.Result){Results();return;}
+ }
+ void LogoSplash(){
+  Box(new Rect(0,0,1280,720),Bg);
+  float fade=Mathf.Clamp01(logoTime/.45f)*Mathf.Clamp01((3.2f-logoTime)/.55f);
+  float scale=1+Mathf.Min(logoTime,3.2f)*.008f;
+  var r=new Rect(640-485*scale,348-343*scale,970*scale,686*scale);
+  if(logoTexture){GUI.color=new Color(.80f,1,.84f,fade);GUI.DrawTexture(r,logoTexture,ScaleMode.ScaleToFit,true);GUI.color=Color.white;}
+  // Subtle display texture is drawn over the original artwork, preserving every detail.
+  for(int y=0;y<720;y+=4)Box(new Rect(0,y,1280,1),new Color(.015f,.045f,.035f,.16f*fade));
+  Box(new Rect(534,620,212,1),new Color(Gold.r,Gold.g,Gold.b,fade*.65f));
+  Text(new Rect(440,636,400,24),"B O V A T I T O S",14,new Color(Muted.r,Muted.g,Muted.b,fade),TextAnchor.MiddleCenter);
  }
  void Menu(){
   Box(new Rect(0,0,1280,720),new Color(.025f,.07f,.065f,.88f));Box(new Rect(0,0,690,720),new Color(.04f,.095f,.09f,.96f));Box(new Rect(64,72,36,3),Gold);

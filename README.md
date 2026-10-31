@@ -15,6 +15,8 @@ Abrir el proyecto con Unity Hub, esperar la importación y abrir `Assets/Scenes/
 
 La cinemática tiene tres viñetas con avance automático, subtítulos y opción de saltarla. Después muestra los controles y espera la confirmación del jugador.
 
+Al iniciar, después de la presentación de Unity, aparece el logo original del GDD durante 3,2 segundos, con un tinte verde, líneas sutiles y fundidos. Se puede saltar con clic, Enter, Espacio o Escape para llegar al menú.
+
 ## Contenido
 
 Una arena diurna de 64 × 48 unidades con macetas, piedras, charcos, drenaje y vegetación; hormigas, arañas y bichos bolita; hormigas alfa a los minutos 3 y 6; Araña Lobo con embestidas, salto e invocaciones y una segunda fase al 50% de salud.

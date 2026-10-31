@@ -177,3 +177,4 @@ Assets/Resources/Audio/credits.wav -filter -diff -merge -text
 Docs/*.pdf -filter -diff -merge -text
 
 Validation/Previews/*.png -filter -diff -merge -text
+Assets/Resources/Art/arthropod_logo.png -filter -diff -merge -text
