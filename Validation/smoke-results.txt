@@ -1,0 +1,57 @@
+PASS Empieza con tenaza; sin habilidades adicionales
+PASS Macetas bloquean movimiento
+PASS Tenaza rango 1: 18 daño, HP=2, rango=1, distancia=1,1, sight=True
+PASS Muerte y ADN una sola vez
+PASS Sin recompensa duplicada
+PASS Daño recibido
+PASS Invulnerabilidad evita daño duplicado
+PASS Caparazón bloquea y recarga en 3 s
+PASS ADN conserva excedente y encola tres mejoras
+PASS Ofertas sin duplicados
+PASS Una elección consume una subida
+PASS Descripción rango 5: Tenaza de escorpión
+PASS Descripción rango 5: Cola de escorpión
+PASS Descripción rango 5: Pinza de cangrejo
+PASS Descripción rango 5: Aguijón de abeja
+PASS Descripción rango 5: Patas de mantis
+PASS Descripción rango 5: Alas de libélula
+PASS Descripción rango 5: Patas de araña
+PASS Descripción rango 5: Patas de ciempiés
+PASS Descripción rango 5: Exoesqueleto regenerativo
+PASS Descripción rango 5: Caparazón de escarabajo
+PASS Descripción rango 5: Fuerza de rinoceronte
+PASS Descripción rango 5: Antenas de crustáceo
+PASS Todas las piezas visuales disponibles
+PASS Jefe aparece una vez con 2400 vida
+PASS Sin jefe duplicado
+PASS Cambio de fase del jefe
+PASS Victoria y resultados
+PASS Derrota y resultados
+PASS Reintento limpia estado
+PASS Daño Tenaza de escorpión rango 1
+PASS Daño Tenaza de escorpión rango 2
+PASS Daño Tenaza de escorpión rango 3
+PASS Daño Tenaza de escorpión rango 4
+PASS Daño Tenaza de escorpión rango 5
+PASS Daño Cola de escorpión rango 1
+PASS Daño Cola de escorpión rango 2
+PASS Daño Cola de escorpión rango 3
+PASS Daño Cola de escorpión rango 4
+PASS Daño Cola de escorpión rango 5
+PASS Daño Pinza de cangrejo rango 1
+PASS Daño Pinza de cangrejo rango 2
+PASS Daño Pinza de cangrejo rango 3
+PASS Daño Pinza de cangrejo rango 4
+PASS Daño Pinza de cangrejo rango 5
+PASS Daño Aguijón de abeja rango 1
+PASS Daño Aguijón de abeja rango 2
+PASS Daño Aguijón de abeja rango 3
+PASS Daño Aguijón de abeja rango 4
+PASS Daño Aguijón de abeja rango 5
+PASS Daño Patas de mantis rango 1
+PASS Daño Patas de mantis rango 2
+PASS Daño Patas de mantis rango 3
+PASS Daño Patas de mantis rango 4
+PASS Daño Patas de mantis rango 5
+PASS Jefe no aparece antes del minuto 8
+PASS Director activa jefe al minuto 8

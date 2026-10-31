@@ -1,0 +1,1 @@
+Six rendered previews complete. Staged scenarios for UI verification.
