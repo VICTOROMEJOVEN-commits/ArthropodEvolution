@@ -26,7 +26,7 @@ public sealed class DemoGame:MonoBehaviour {
  readonly int[] ranks=new int[12];readonly float[] cooldowns=new float[5];
  Vector2 pos=new Vector2(0,-10),facing=Vector2.up;float hp=100,maxHp=100,clock,withoutDamage,invulnerable,shellTimer,spawnCredit,bannerTime,shakeTime,totalDamage,upgradeLock;
  int level=1,xp,kills,pending,selected;int[] offers=Array.Empty<int>();bool bossSpawned,won,elite1,elite2;Enemy boss;
- string banner="";float introTime;AudioSource music,sfx;AudioClip menuTrack,gardenTrack,bossTrack;float sfxLimiter;Material lineMaterial;
+ string banner="";float introTime;AudioSource music,sfx;AudioClip menuTrack,gardenTrack,bossTrack,creditsTrack;Texture2D creditsSheet;float sfxLimiter;Material lineMaterial;
  Font font;GUIStyle label,small,title,button,body;Texture2D white;bool guiReady;Vector2 creditsScroll;
  static readonly Color Bg=EvolutionData.C("101f20"),Panel=EvolutionData.C("172d2d"),Mint=EvolutionData.C("b8ddab"),Gold=EvolutionData.C("ebc787"),Muted=EvolutionData.C("8fa6a0"),Red=EvolutionData.C("e99b8b");
  string savePath;
@@ -42,7 +42,7 @@ public sealed class DemoGame:MonoBehaviour {
   BuildGarden();CreatePlayer();
   music=gameObject.AddComponent<AudioSource>();music.loop=true;music.volume=settings.music*.42f;
   sfx=gameObject.AddComponent<AudioSource>();sfx.volume=settings.effects;
-  menuTrack=Resources.Load<AudioClip>("Audio/menu");gardenTrack=Resources.Load<AudioClip>("Audio/garden");bossTrack=Resources.Load<AudioClip>("Audio/boss");PlayMusic(menuTrack);
+  menuTrack=Resources.Load<AudioClip>("Audio/menu");gardenTrack=Resources.Load<AudioClip>("Audio/garden");bossTrack=Resources.Load<AudioClip>("Audio/boss");creditsTrack=Resources.Load<AudioClip>("Audio/credits");creditsSheet=Resources.Load<Texture2D>("Art/team_credits");PlayMusic(menuTrack);
   Time.timeScale=1;
   #if UNITY_EDITOR
   if(File.Exists("Temp/ArthropodSmokePending.txt")){File.Delete("Temp/ArthropodSmokePending.txt");Invoke(nameof(RunSmokeTest),1);}
@@ -206,6 +206,7 @@ public sealed class DemoGame:MonoBehaviour {
  System.Collections.IEnumerator PreviewSequence(){
   Directory.CreateDirectory("Validation/Previews");
   mode=Mode.Menu;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/01-menu.png");yield return null;
+  mode=Mode.Credits;PlayMusic(creditsTrack);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/07-creditos.png");yield return null;
   StartRun();introTime=12;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/02-cinematica.png");yield return null;
   mode=Mode.Playing;ranks[0]=3;ranks[2]=2;ranks[5]=2;ranks[9]=1;clock=45;hp=100;
   for(int i=0;i<20;i++){Vector2 p=pos+new Vector2(Mathf.Cos(i*.315f),Mathf.Sin(i*.315f))*UnityEngine.Random.Range(3f,7f);if(!Blocked(p))Spawn(i%3,p);}
@@ -262,7 +263,7 @@ public sealed class DemoGame:MonoBehaviour {
   Text(new Rect(64,91,540,30),"B O V A T I T O S   /   DEMOSTRACIÓN",13,Gold);Text(new Rect(60,137,640,76),"ARTHROPOD",58,Mint);Text(new Rect(62,210,580,65),"EVOLUTION",51,Mint);Text(new Rect(65,300,510,68),"Del desagüe a la cima\nde la cadena alimenticia.",24,Muted);
   if(Btn(new Rect(65,410,420,56),"ENTRAR AL JARDÍN     →",true))StartRun();
   if(Btn(new Rect(65,480,204,44),"OPCIONES")){returnMode=Mode.Menu;mode=Mode.Options;}
-  if(Btn(new Rect(281,480,204,44),"CRÉDITOS"))mode=Mode.Credits;
+  if(Btn(new Rect(281,480,204,44),"CRÉDITOS")){mode=Mode.Credits;PlayMusic(creditsTrack);}
   GUI.enabled=false;Btn(new Rect(65,540,204,36),"NIVELES (BLOQ.)");Btn(new Rect(281,540,204,36),"GALERÍA (BLOQ.)");GUI.enabled=true;
   if(Btn(new Rect(65,588,420,34),"SALIR"))Application.Quit();
   Text(new Rect(65,638,560,28),"01  EL JARDÍN DE LOS DESCARTES",14,Gold);Text(new Rect(65,669,580,20),"WASD / FLECHAS  ·  ATAQUES AUTOMÁTICOS  ·  ESC PAUSA",12,Muted);
@@ -288,7 +289,7 @@ public sealed class DemoGame:MonoBehaviour {
  void Overlay(){Box(new Rect(0,0,1280,720),new Color(.025f,.06f,.055f,.9f));}
  void Intro(){
   Overlay();Text(new Rect(96,40,1088,35),"PRÓLOGO  /  EL COLECCIONISTA",14,Gold);Text(new Rect(96,80,1088,48),"Un experimento fallido. Un ADN imposible.",30,Mint);
-  var tex=Resources.Load<Texture2D>("Art/cinematic");if(tex){tex.filterMode=FilterMode.Bilinear;GUI.DrawTexture(new Rect(96,150,1088,405),tex,ScaleMode.StretchToFill,true);}
+  var tex=Resources.Load<Texture2D>("Art/cinematic");if(tex){tex.filterMode=FilterMode.Point;GUI.DrawTexture(new Rect(96,150,1088,405),tex,ScaleMode.StretchToFill,true);}
   int step=Mathf.Min(2,(int)(introTime/4));for(int i=0;i<3;i++){if(i!=step&&introTime<12)Box(new Rect(96+i*1088/3f,150,1088/3f,405),new Color(.025f,.05f,.04f,.76f));if(i==step&&introTime<12)Border(new Rect(96+i*1088/3f,150,1088/3f,405),Gold,2);}
   string[] captions={"El Coleccionista: «Inestable. Imperfecto. Otro espécimen que no sirve». «Zer0», anota en su registro.","Arrojado al desagüe, Zer0 desaparece entre barro y raíces. El científico vuelve a sus experimentos.","Pero Zer0 sigue vivo. En el jardín, absorber ADN será la diferencia entre devorar... y ser devorado."};
   Text(new Rect(96,570,1088,55),introTime>=12?"WASD / flechas: moverte. Ataques automáticos. Absorbé ADN y elegí mutaciones para sobrevivir hasta la Araña Lobo.":captions[step],20,Mint,TextAnchor.MiddleCenter);
@@ -317,16 +318,23 @@ public sealed class DemoGame:MonoBehaviour {
   if(Btn(new Rect(300,570,330,53),"VOLVER A EVOLUCIONAR",true))StartRun();if(Btn(new Rect(650,570,330,53),"MENÚ")){mode=Mode.Menu;PlayMusic(menuTrack);}
  }
  void Credits(){
-  Overlay();Text(new Rect(220,56,840,30),"EL EQUIPO DETRÁS DE ZER0",14,Gold);Text(new Rect(220,98,840,65),"Bovatitos",46,Mint);
-  string[] people={"Santino Bovati","Brandon Emmanuel Li","Victor Ome Joven","Mauro Arcadigni"};
-  string[] roles={"LEAD PROGRAMMER","GAME DESIGNER","LEVEL DESIGNER","GAME ARTIST"};
-  for(int i=0;i<4;i++){Rect r=new Rect(220+(i%2)*430,205+(i/2)*116,410,96);Box(r,Panel);Border(r,EvolutionData.C("456055"));Text(new Rect(r.x+20,r.y+14,370,35),people[i],24,Mint);Text(new Rect(r.x+20,r.y+55,370,24),roles[i],13,Gold);}
-  Text(new Rect(220,460,840,34),"ARTHROPOD EVOLUTION · DEMOSTRACIÓN DEL JARDÍN",15,Gold);
-  Text(new Rect(220,509,840,75),"Diseño y créditos del equipo según el GDD original. Sprites, música y efectos creados para este prototipo; viñetas generadas con ImageGen. Inspiración de jugabilidad: Vampire Survivors. Referencia del científico: Plants vs. Zombies.",17,Muted,TextAnchor.UpperLeft);
-  if(Btn(new Rect(220,620,840,50),"VOLVER AL MENÚ",true))mode=Mode.Menu;
+  Overlay();Text(new Rect(140,42,1000,28),"EL EQUIPO DETRÁS DE ZER0",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(140,83,1000,62),"BOVATITOS",45,Mint,TextAnchor.MiddleCenter);
+  Text(new Rect(140,151,1000,27),"Cuatro especímenes. Un montón de mutaciones.",17,Muted,TextAnchor.MiddleCenter);
+  string[] people={"Victor Ome Joven","Mauro Arcadigni","Santino Bovati","Brandon Emmanuel Li"};
+  string[] roles={"LEVEL DESIGNER","GAME ARTIST","LEAD PROGRAMMER","GAME DESIGNER"};
+  float beat=Time.realtimeSinceStartup*140f/60;int frame=(int)(beat*2)%4;
+  for(int i=0;i<4;i++){
+   Rect r=new Rect(140+(i%2)*510,204+(i/2)*190,490,170);Box(r,Panel);Border(r,EvolutionData.C("456055"));
+   float bounce=Mathf.Sin(beat*Mathf.PI*2+i*.7f)*3;
+   if(creditsSheet){GUI.DrawTextureWithTexCoords(new Rect(r.x+14,r.y+5+bounce,154,154),creditsSheet,new Rect(i*.25f,(3-frame)*.25f,.25f,.25f),true);}
+   Text(new Rect(r.x+181,r.y+35,287,65),people[i],24,Mint);Text(new Rect(r.x+181,r.y+110,287,27),roles[i],13,Gold);
+  }
+  Text(new Rect(140,581,1000,28),"Gracias por acompañarnos en esta evolución.",17,Muted,TextAnchor.MiddleCenter);
+  if(Btn(new Rect(390,635,500,48),"VOLVER AL MENÚ",true)){mode=Mode.Menu;PlayMusic(menuTrack);}
  }
 }
 }
+
 
 
 

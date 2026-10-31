@@ -21,7 +21,7 @@ Una arena diurna de 64 × 48 unidades con macetas, piedras, charcos, drenaje y v
 
 Las doce mutaciones del GDD tienen cinco rangos y piezas visibles. Zer0 empieza con **Tenaza de escorpión**. El ejemplo de disparo de veneno no se incluye. Hay cuatro ranuras ofensivas y cuatro pasivas. La regeneración comienza tras cinco segundos sin daño; el caparazón bloquea un golpe y vuelve tras tres segundos.
 
-Menú, prólogo, HUD, selección de mejoras, pausa, opciones, créditos y resultados. Música, efectos sintetizados, animación por cuadros, partículas y señales de ataque. Se guardan opciones y récord local; no se reanuda una partida cerrada.
+Menú, prólogo, HUD, selección de mejoras, pausa, opciones, créditos y resultados. Los créditos muestran a los cuatro integrantes con avatares pixelados animados, nombres completos y un tema cómico dedicado de 140 BPM. Música, efectos sintetizados, animación por cuadros, partículas y señales de ataque. Se guardan opciones y récord local; no se reanuda una partida cerrada.
 
 ## Compilar
 
@@ -32,7 +32,7 @@ Menú **Arthropod → Compilar demo Windows**. Salida: `Build/Windows/ArthropodE
 - `Assets/Scripts/DemoGame.cs`: ciclo de partida, arena, enemigos, jefe, combate, UI, audio y persistencia.
 - `Assets/Scripts/EvolutionData.cs`: nombres, cinco rangos, daño, intervalos, alcance y pasivas.
 - `Assets/Resources/Art`: sprites originales, piezas anatómicas y viñetas.
-- `Assets/Resources/Audio`: tres bucles musicales originales.
+- `Assets/Resources/Audio`: cuatro bucles musicales originales.
 - `Assets/Editor`: importación pixelada, preparación de escena, compilación y validación.
 - `Validation`: resultados de pruebas y capturas de escenarios preparados para verificar la interfaz; las capturas no son una grabación de una partida completa.
 
@@ -50,6 +50,7 @@ La demo cubre el Nivel 1. El resto de la campaña, selector de niveles, galería
 
 Bovatitos: Santino Bovati (Lead Programmer), Brandon Emmanuel Li (Game Designer), Victor Ome Joven (Level Designer), Mauro Arcadigni (Game Artist), según el GDD original.
 
-Sprites pixelados, música y efectos creados para este prototipo. Viñetas creadas con ImageGen integrado: científico insectólogo caricaturesco de aspecto zombi, terrario, descarte al drenaje y despertar de Zer0. La referencia visual solicitada fue el arquetipo de científico zombi de Plants vs. Zombies; no se reutilizaron archivos de ese juego. Inspiración de jugabilidad: Vampire Survivors; no se reutilizaron sus recursos.
+Sprites pixelados, música y efectos creados para este prototipo. Viñetas del Coleccionista: científico insectólogo caricaturesco de aspecto zombi, terrario, descarte al drenaje y despertar de Zer0. La referencia visual solicitada fue el arquetipo de científico zombi de Plants vs. Zombies; no se reutilizaron archivos de ese juego. Inspiración de jugabilidad: Vampire Survivors; no se reutilizaron sus recursos.
 
 El proyecto conserva los créditos y la autoría del diseño original. No se agrega una licencia de redistribución al diseño del equipo sin su decisión.
+

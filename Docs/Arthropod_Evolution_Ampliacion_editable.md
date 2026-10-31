@@ -284,7 +284,7 @@ Puntos = bajas x 10 + nivel x 100 + 2000 al vencer al jefe. Mostrar tiempo, baja
 
 ## El Coleccionista
 
-Prólogo en tres viñetas: 1) científico insectólogo observa con desprecio a Zer0 en un terrario; 2) descarta el espécimen hacia el drenaje; 3) la larva despierta en el barro del jardín, con una araña como amenaza futura. Dirección visual solicitada: científico caricaturesco de aspecto zombi, gran cabeza, bata, guantes violetas y gafas de coleccionista, inspirado en el arquetipo de Plants vs. Zombies.
+Prólogo de pixel art caricaturesco en tres viñetas: 1) científico insectólogo observa con desprecio a Zer0 en un terrario; 2) descarta el espécimen hacia el drenaje; 3) la larva despierta en el barro del jardín, con una araña como amenaza futura. Dirección visual solicitada: científico caricaturesco de aspecto zombi, gran cabeza, bata, guantes violetas y gafas de coleccionista, inspirado en el arquetipo de Plants vs. Zombies.
 
 Cada viñeta se destaca durante aproximadamente 4 s mientras las demás quedan oscurecidas. Subtítulos independientes de la imagen. Enter o botón avanza; Saltar cinemática inicia la partida. Tras el prólogo aparecen los controles y se espera confirmación. Las dos formulaciones del prólogo del documento original permanecen intactas; esta demo representa la del descarte.
 
@@ -296,9 +296,28 @@ Tiles y Zer0 de 32 px; enemigos de 32 px, jefe de 64 px, escalados en el mundo. 
 
 ## Sonido
 
-Tres bucles originales sintetizados: menú a 90 BPM, Jardín a 120 BPM y jefe a 144 BPM. La música cambia al aparecer la Araña Lobo. Efectos de disparador de ataque físico, impacto, ADN, daño, bloqueo, selección y resultado mediante síntesis breve. Volumen de música y efectos ajustable por separado.
+Cuatro bucles musicales: menú a 90 BPM, Jardín a 120 BPM, jefe a 144 BPM y créditos a 140 BPM. El tema de créditos tiene melodía cómica y ritmo de chiptune tipo meme. La música cambia al aparecer la Araña Lobo. Efectos de disparador de ataque físico, impacto, ADN, daño, bloqueo, selección y resultado mediante síntesis breve. Volumen de música y efectos ajustable por separado.
 
-Los bucles y sprites forman parte del proyecto; no requieren descargas en ejecución. Las viñetas fueron generadas con ImageGen integrado. No hay voces grabadas ni una película pre-renderizada: la cinemática se reproduce dentro del juego mediante imagen, énfasis temporal y subtítulos.
+Los bucles y sprites forman parte del proyecto; no requieren descargas en ejecución. No hay voces grabadas ni una película pre-renderizada: la cinemática se reproduce dentro del juego mediante imagen, énfasis temporal y subtítulos.
+
+
+# Créditos del equipo | Dentro del juego
+
+Pantalla accesible desde CRÉDITOS en el menú principal. Cuatro retratos pixelados animados, con nombres completos y roles. El orden de las fotos de referencia se conserva en la grilla: Victor, Mauro, Santino y Brandon.
+
+Integrante | Rol
+
+Victor Ome Joven | Level Designer
+
+Mauro Arcadigni | Game Artist
+
+Santino Bovati | Lead Programmer
+
+Brandon Emmanuel Li | Game Designer
+
+Cada avatar tiene cuatro estados: reposo, parpadeo, saludo y pose de baile. Los cuadros se alternan con una pequeña oscilación al ritmo de la música. Se dibujan directamente dentro de las tarjetas del juego, junto al nombre completo correspondiente.
+
+Tema dedicado a los créditos: bucle cómico de chiptune a 140 BPM, bajo saltarín, melodía pegadiza y pequeños efectos de silbato, con intención de meme. Al volver al menú se recupera su música. El volumen respeta la opción de música del juego.
 
 
 # Interfaz, opciones y estructura del proyecto

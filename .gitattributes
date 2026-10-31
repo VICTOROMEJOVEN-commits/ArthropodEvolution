@@ -169,3 +169,11 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# Small bundled assets stored directly
+Assets/Resources/Art/team_credits.png -filter -diff -merge -text
+Assets/Resources/Art/cinematic.png -filter -diff -merge -text
+Assets/Resources/Audio/credits.wav -filter -diff -merge -text
+Docs/*.pdf -filter -diff -merge -text
+
+Validation/Previews/*.png -filter -diff -merge -text
