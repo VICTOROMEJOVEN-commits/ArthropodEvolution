@@ -16,7 +16,7 @@ public sealed class DemoGame:MonoBehaviour {
  sealed class Marker {public LineRenderer line;public float time;}
  [Serializable] sealed class Settings {public float music=.55f,effects=.65f,shake=.5f;public bool numbers=true,reducedFlash=false,fullScreen=true;public int best,cap=60;}
  Mode mode=Mode.Logo,returnMode=Mode.Menu;
- float logoTime;Texture2D logoTexture;
+ float logoTime;bool logoSoundPlayed;Texture2D logoTexture;
  Settings settings=new Settings();
  Camera cam; Transform world,actors,decorations; SpriteRenderer player,shadow; SpriteRenderer[] parts=new SpriteRenderer[12];
  readonly Dictionary<string,Sprite> sprites=new Dictionary<string,Sprite>();
@@ -84,7 +84,7 @@ public sealed class DemoGame:MonoBehaviour {
   Array.Clear(ranks,0,12);Array.Clear(cooldowns,0,5);ranks[0]=1;hp=maxHp=100;clock=0;xp=0;level=1;kills=0;pending=0;totalDamage=0;spawnCredit=0;invulnerable=1;withoutDamage=0;shellTimer=0;boss=null;bossSpawned=elite1=elite2=won=false;pos=new Vector2(0,-10);facing=Vector2.up;cam.transform.position=new Vector3(0,-10,-10);player.enabled=true;mode=Mode.Intro;introTime=0;PlayMusic(gardenTrack);Banner("EL JARDÍN DE LOS DESCARTES",4);UpdatePlayerArt();
  }
  void Update(){
-  if(mode==Mode.Logo){logoTime+=Time.unscaledDeltaTime;if(logoTime>=3.2f||Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape)||Input.GetMouseButtonDown(0))mode=Mode.Menu;return;}
+  if(mode==Mode.Logo){logoTime+=Time.unscaledDeltaTime;if(!logoSoundPlayed&&logoTime>=.1f){logoSoundPlayed=true;var sting=Resources.Load<AudioClip>("Audio/logo");if(sting)sfx.PlayOneShot(sting,.7f);}if(logoTime>=4f||Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape)||Input.GetMouseButtonDown(0))mode=Mode.Menu;return;}
   if(Input.GetKeyDown(KeyCode.Escape)){if(mode==Mode.Playing)mode=Mode.Pause;else if(mode==Mode.Pause)mode=Mode.Playing;else if(mode==Mode.Options)mode=returnMode;else if(mode==Mode.Intro)mode=Mode.Playing;}
   if(mode==Mode.Intro){introTime=Mathf.Min(12,introTime+Time.unscaledDeltaTime);if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)){if(introTime>=12)mode=Mode.Playing;else introTime=Mathf.Min(12,(Mathf.Floor(introTime/4)+1)*4);}UpdatePlayerArt();return;}
   if(mode==Mode.Upgrade){if(Input.GetKeyDown(KeyCode.RightArrow)||Input.GetKeyDown(KeyCode.D))selected=(selected+1)%offers.Length;if(Input.GetKeyDown(KeyCode.LeftArrow)||Input.GetKeyDown(KeyCode.A))selected=(selected+offers.Length-1)%offers.Length;if(Time.unscaledTime>upgradeLock){if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space))Choose(selected);for(int i=0;i<offers.Length;i++)if(Input.GetKeyDown(KeyCode.Alpha1+i))Choose(i);}return;}
@@ -265,8 +265,8 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void LogoSplash(){
   Box(new Rect(0,0,1280,720),Bg);
-  float fade=Mathf.Clamp01(logoTime/.45f)*Mathf.Clamp01((3.2f-logoTime)/.55f);
-  float scale=1+Mathf.Min(logoTime,3.2f)*.008f;
+  float fade=Mathf.Clamp01(logoTime/.45f)*Mathf.Clamp01((4f-logoTime)/.55f);
+  float scale=1+Mathf.Min(logoTime,4f)*.008f;
   var r=new Rect(640-485*scale,348-343*scale,970*scale,686*scale);
   if(logoTexture){GUI.color=new Color(.80f,1,.84f,fade);GUI.DrawTexture(r,logoTexture,ScaleMode.ScaleToFit,true);GUI.color=Color.white;}
   // Subtle display texture is drawn over the original artwork, preserving every detail.

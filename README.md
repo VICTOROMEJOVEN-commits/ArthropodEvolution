@@ -15,7 +15,7 @@ Abrir el proyecto con Unity Hub, esperar la importación y abrir `Assets/Scenes/
 
 La cinemática tiene tres viñetas con avance automático, subtítulos y opción de saltarla. Después muestra los controles y espera la confirmación del jugador.
 
-Al iniciar, después de la presentación de Unity, aparece el logo original del GDD durante 3,2 segundos, con un tinte verde, líneas sutiles y fundidos. Se puede saltar con clic, Enter, Espacio o Escape para llegar al menú.
+Al iniciar, después de la presentación de Unity, aparece el logo original del GDD durante 4 segundos, con un tinte verde, líneas sutiles, fundidos y un sonido retro breve. Se puede saltar con clic, Enter, Espacio o Escape para llegar al menú.
 
 ## Contenido
 
