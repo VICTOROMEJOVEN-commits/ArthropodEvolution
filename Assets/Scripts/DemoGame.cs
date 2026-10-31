@@ -316,9 +316,19 @@ public sealed class DemoGame:MonoBehaviour {
   Border(new Rect(205,342,870,1),Muted);Text(new Rect(205,361,870,30),"ANATOMÍA FINAL   /   NIVEL "+level+"   /   DAÑO TOTAL "+totalDamage.ToString("N0"),14,Muted);int c=0;for(int i=0;i<12;i++)if(ranks[i]>0){Icon(new Rect(205+c*105,412,58,58),i);Text(new Rect(205+c*105,479,90,24),"RANGO "+ranks[i],12,EvolutionData.Colors[i]);c++;}
   if(Btn(new Rect(300,570,330,53),"VOLVER A EVOLUCIONAR",true))StartRun();if(Btn(new Rect(650,570,330,53),"MENÚ")){mode=Mode.Menu;PlayMusic(menuTrack);}
  }
- void Credits(){Overlay();Text(new Rect(220,80,840,65),"Bovatitos",46,Mint);Text(new Rect(220,165,840,260),"ARTHROPOD EVOLUTION\n\nSantino Bovati · Lead Programmer\nBrandon Emmanuel Li · Game Designer\nVictor Ome Joven · Level Designer\nMauro Arcadigni · Game Artist\n\nDemo Unity: arte pixelado, música y efectos originales generados para este prototipo. Diseño basado en el GDD del equipo. Inspiración de género: Vampire Survivors.",21,Muted,TextAnchor.UpperLeft);Text(new Rect(220,470,840,70),"Campaña completa: Jardín → Tronco → Estanque → Colmena → Terrario. Esta demostración incluye únicamente el Jardín.",18,Gold);if(Btn(new Rect(220,584,840,50),"VOLVER",true))mode=Mode.Menu;}
+ void Credits(){
+  Overlay();Text(new Rect(220,56,840,30),"EL EQUIPO DETRÁS DE ZER0",14,Gold);Text(new Rect(220,98,840,65),"Bovatitos",46,Mint);
+  string[] people={"Santino Bovati","Brandon Emmanuel Li","Victor Ome Joven","Mauro Arcadigni"};
+  string[] roles={"LEAD PROGRAMMER","GAME DESIGNER","LEVEL DESIGNER","GAME ARTIST"};
+  for(int i=0;i<4;i++){Rect r=new Rect(220+(i%2)*430,205+(i/2)*116,410,96);Box(r,Panel);Border(r,EvolutionData.C("456055"));Text(new Rect(r.x+20,r.y+14,370,35),people[i],24,Mint);Text(new Rect(r.x+20,r.y+55,370,24),roles[i],13,Gold);}
+  Text(new Rect(220,460,840,34),"ARTHROPOD EVOLUTION · DEMOSTRACIÓN DEL JARDÍN",15,Gold);
+  Text(new Rect(220,509,840,75),"Diseño y créditos del equipo según el GDD original. Sprites, música y efectos creados para este prototipo; viñetas generadas con ImageGen. Inspiración de jugabilidad: Vampire Survivors. Referencia del científico: Plants vs. Zombies.",17,Muted,TextAnchor.UpperLeft);
+  if(Btn(new Rect(220,620,840,50),"VOLVER AL MENÚ",true))mode=Mode.Menu;
+ }
 }
 }
+
+
 
 
 
