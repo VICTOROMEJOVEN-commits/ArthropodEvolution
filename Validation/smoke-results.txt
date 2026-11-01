@@ -55,3 +55,76 @@ PASS Daño Patas de mantis rango 4
 PASS Daño Patas de mantis rango 5
 PASS Jefe no aparece antes del minuto 8
 PASS Director activa jefe al minuto 8
+PASS Antes de 10:00 la partida continúa
+PASS 10:00 causa derrota aunque quede vida
+PASS Vida cero mantiene derrota antes del límite
+PASS Derrotar jefe vivo antes de 10:00 da victoria
+PASS El límite cumplido tiene prioridad sobre una baja tardía
+PASS Presupuesto de daño: tenaza y cola rango 2, 50% ventanas frontales, jefe en 60,1 s (<120 s); prueba aislada sin conducta enemiga
+PASS Ataque anatómico 0 orientado (0.00, 1.00)
+PASS Raíz de mutación 0 unida al cuerpo
+PASS Ataque anatómico 1 orientado (0.00, 1.00)
+PASS Raíz de mutación 1 unida al cuerpo
+PASS Ataque anatómico 2 orientado (0.00, 1.00)
+PASS Raíz de mutación 2 unida al cuerpo
+PASS Ataque anatómico 3 orientado (0.00, 1.00)
+PASS Raíz de mutación 3 unida al cuerpo
+PASS Ataque anatómico 4 orientado (0.00, 1.00)
+PASS Raíz de mutación 4 unida al cuerpo
+PASS Ataque anatómico 0 orientado (1.00, 0.00)
+PASS Raíz de mutación 0 unida al cuerpo
+PASS Ataque anatómico 1 orientado (1.00, 0.00)
+PASS Raíz de mutación 1 unida al cuerpo
+PASS Ataque anatómico 2 orientado (1.00, 0.00)
+PASS Raíz de mutación 2 unida al cuerpo
+PASS Ataque anatómico 3 orientado (1.00, 0.00)
+PASS Raíz de mutación 3 unida al cuerpo
+PASS Ataque anatómico 4 orientado (1.00, 0.00)
+PASS Raíz de mutación 4 unida al cuerpo
+PASS Ataque anatómico 0 orientado (0.00, -1.00)
+PASS Raíz de mutación 0 unida al cuerpo
+PASS Ataque anatómico 1 orientado (0.00, -1.00)
+PASS Raíz de mutación 1 unida al cuerpo
+PASS Ataque anatómico 2 orientado (0.00, -1.00)
+PASS Raíz de mutación 2 unida al cuerpo
+PASS Ataque anatómico 3 orientado (0.00, -1.00)
+PASS Raíz de mutación 3 unida al cuerpo
+PASS Ataque anatómico 4 orientado (0.00, -1.00)
+PASS Raíz de mutación 4 unida al cuerpo
+PASS Ataque anatómico 0 orientado (-1.00, 0.00)
+PASS Raíz de mutación 0 unida al cuerpo
+PASS Ataque anatómico 1 orientado (-1.00, 0.00)
+PASS Raíz de mutación 1 unida al cuerpo
+PASS Ataque anatómico 2 orientado (-1.00, 0.00)
+PASS Raíz de mutación 2 unida al cuerpo
+PASS Ataque anatómico 3 orientado (-1.00, 0.00)
+PASS Raíz de mutación 3 unida al cuerpo
+PASS Ataque anatómico 4 orientado (-1.00, 0.00)
+PASS Raíz de mutación 4 unida al cuerpo
+PASS Atlas evolutivo presente: claw
+PASS Modelo distinto entre rango 1 y 5: claw
+PASS Atlas evolutivo presente: tail
+PASS Modelo distinto entre rango 1 y 5: tail
+PASS Atlas evolutivo presente: crab
+PASS Modelo distinto entre rango 1 y 5: crab
+PASS Atlas evolutivo presente: sting
+PASS Modelo distinto entre rango 1 y 5: sting
+PASS Atlas evolutivo presente: mantis
+PASS Modelo distinto entre rango 1 y 5: mantis
+PASS Atlas evolutivo presente: wings
+PASS Modelo distinto entre rango 1 y 5: wings
+PASS Atlas evolutivo presente: legs
+PASS Modelo distinto entre rango 1 y 5: legs
+PASS Atlas evolutivo presente: centipede
+PASS Modelo distinto entre rango 1 y 5: centipede
+PASS Atlas evolutivo presente: regen
+PASS Modelo distinto entre rango 1 y 5: regen
+PASS Atlas evolutivo presente: shell
+PASS Modelo distinto entre rango 1 y 5: shell
+PASS Atlas evolutivo presente: horn
+PASS Modelo distinto entre rango 1 y 5: horn
+PASS Atlas evolutivo presente: antenna
+PASS Modelo distinto entre rango 1 y 5: antenna
+PASS Luz suave compatible con renderizado integrado
+PASS Presión de aparición aumenta con el tiempo
+PASS Enemigos tardíos más resistentes, rápidos y peligrosos

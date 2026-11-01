@@ -10,6 +10,7 @@ public static class DemoBuilder {
   const string request="Temp/ArthropodRequest.txt";if(EditorApplication.isCompiling||EditorApplication.isUpdating||!File.Exists(request))return;
   string cmd;try{cmd=File.ReadAllText(request).Trim();File.Delete(request);}catch(IOException){return;}
   if(cmd=="REFRESH")AssetDatabase.Refresh();
+  if(cmd=="ART"){foreach(string path in Directory.GetFiles("Assets/Resources/Art","*.png")){var importer=AssetImporter.GetAtPath(path) as TextureImporter;if(importer==null)continue;importer.npotScale=TextureImporterNPOTScale.None;importer.maxTextureSize=4096;importer.wrapMode=TextureWrapMode.Clamp;importer.filterMode=FilterMode.Point;importer.SaveAndReimport();}}
   if(cmd=="PLAY")EditorApplication.isPlaying=true;
   if(cmd=="STOP")EditorApplication.isPlaying=false;
   if(cmd=="BUILD"){if(EditorApplication.isPlaying){EditorApplication.isPlaying=false;EditorApplication.delayCall+=Build;}else Build();}

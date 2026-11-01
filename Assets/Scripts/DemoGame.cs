@@ -16,7 +16,7 @@ public sealed class DemoGame:MonoBehaviour {
  sealed class Marker {public LineRenderer line;public float time;}
  [Serializable] sealed class Settings {public float music=.55f,effects=.65f,shake=.5f;public bool numbers=true,reducedFlash=false,fullScreen=true;public int best,cap=60;}
  Mode mode=Mode.Logo,returnMode=Mode.Menu;
- float logoTime;bool logoSoundPlayed;Texture2D logoTexture;
+ float logoTime;bool logoSoundPlayed,isMoving;Texture2D logoTexture;
  Settings settings=new Settings();
  Camera cam; Transform world,actors,decorations; SpriteRenderer player,shadow; SpriteRenderer[] parts=new SpriteRenderer[12];
  readonly Dictionary<string,Sprite> sprites=new Dictionary<string,Sprite>();
@@ -25,6 +25,15 @@ public sealed class DemoGame:MonoBehaviour {
  readonly List<Fx> effects=new List<Fx>();readonly List<FloatText> texts=new List<FloatText>();readonly List<Marker> markers=new List<Marker>();
  readonly Queue<Enemy> enemyPool=new Queue<Enemy>();readonly Queue<SpriteRenderer> dropPool=new Queue<SpriteRenderer>(),fxPool=new Queue<SpriteRenderer>();
  readonly int[] ranks=new int[12];readonly float[] cooldowns=new float[5];
+ readonly float[] attackPose=new float[5];readonly Vector2[] attackDirection=new Vector2[5];
+ readonly int[] trailFrame={-1,-1,-1,-1,-1};SpriteRenderer crabMirror;
+ static readonly string[] MutationAtlases={"claw","tail","crab","sting","mantis","wings","legs","centipede","regen","shell","horn","antenna"};
+ static readonly Vector2[] Mounts={new Vector2(.25f,.08f),new Vector2(-.25f,-.3f),new Vector2(.31f,-.08f),new Vector2(0,-.46f),new Vector2(0,.12f),new Vector2(0,.12f),new Vector2(0,-.04f),new Vector2(0,-.2f),new Vector2(0,-.12f),new Vector2(0,-.12f),new Vector2(0,.36f),new Vector2(0,.4f)};
+ Material glowMaterial;Sprite glowSprite;SpriteRenderer playerGlow,bossGlow;float pollenTimer;Vector2 movementVelocity;
+ [Serializable] sealed class AtlasCell {public int index;public float x,y,w,h;}
+ [Serializable] sealed class AtlasLayout {public string name;public AtlasCell[] cells;}
+ [Serializable] sealed class AtlasCatalog {public AtlasLayout[] atlases;}
+ AtlasCatalog atlasCatalog;bool atlasCatalogLoaded;
  Vector2 pos=new Vector2(0,-10),facing=Vector2.up;float hp=100,maxHp=100,clock,withoutDamage,invulnerable,shellTimer,spawnCredit,bannerTime,shakeTime,totalDamage,upgradeLock;
  int level=1,xp,kills,pending,selected;int[] offers=Array.Empty<int>();bool bossSpawned,won,elite1,elite2;Enemy boss;
  string banner="";float introTime;AudioSource music,sfx;AudioClip menuTrack,gardenTrack,bossTrack,creditsTrack;Texture2D creditsSheet;float sfxLimiter;Material lineMaterial;
@@ -41,7 +50,9 @@ public sealed class DemoGame:MonoBehaviour {
   world=new GameObject("Jardín de los Descartes").transform;actors=new GameObject("Criaturas y mutaciones").transform;decorations=new GameObject("Escenografía").transform;
   cam.gameObject.AddComponent<AudioListener>();
   lineMaterial=new Material(Shader.Find("Sprites/Default"));
+  var glowShader=Resources.Load<Shader>("SoftGlow");if(glowShader){glowMaterial=new Material(glowShader);glowSprite=Sprite.Create(Texture2D.whiteTexture,new Rect(0,0,Texture2D.whiteTexture.width,Texture2D.whiteTexture.height),new Vector2(.5f,.5f),Texture2D.whiteTexture.width);}
   BuildGarden();CreatePlayer();
+  if(glowMaterial){playerGlow=Glow("Luz suave de Zer0",pos,3,new Color(.55f,.85f,.65f,.08f),-165);bossGlow=Glow("Luz del depredador",Vector2.zero,4,new Color(1,.35f,.15f,.09f),-165);bossGlow.enabled=false;Glow("Reflejo del desagüe",new Vector2(0,-12.5f),4,new Color(.3f,.8f,.7f,.1f),-165);}
   music=gameObject.AddComponent<AudioSource>();music.loop=true;music.volume=settings.music*.42f;
   sfx=gameObject.AddComponent<AudioSource>();sfx.volume=settings.effects;
   menuTrack=Resources.Load<AudioClip>("Audio/menu");gardenTrack=Resources.Load<AudioClip>("Audio/garden");bossTrack=Resources.Load<AudioClip>("Audio/boss");creditsTrack=Resources.Load<AudioClip>("Audio/credits");creditsSheet=Resources.Load<Texture2D>("Art/team_credits");PlayMusic(menuTrack);
@@ -50,7 +61,9 @@ public sealed class DemoGame:MonoBehaviour {
   if(File.Exists("Temp/ArthropodSmokePending.txt")){File.Delete("Temp/ArthropodSmokePending.txt");Invoke(nameof(RunSmokeTest),1);}
   #endif
  }
- Sprite Art(string key){if(sprites.TryGetValue(key,out var s))return s;var t=Resources.Load<Texture2D>("Art/"+key);if(!t){t=Texture2D.whiteTexture;}t.filterMode=FilterMode.Point;s=Sprite.Create(t,new Rect(0,0,t.width,t.height),new Vector2(.5f,.5f),32);sprites[key]=s;return s;}
+ Sprite AtlasFrame(string key,string atlas,int columns,int rows,int column,int row,Vector2? pivot=null){if(sprites.TryGetValue(key,out var cached))return cached;var t=Resources.Load<Texture2D>("Art/"+atlas);if(!t)return null;t.filterMode=FilterMode.Point;float w=t.width/(float)columns,h=t.height/(float)rows;var rect=new Rect(column*w,(rows-1-row)*h,w,h);Vector2 root=pivot??new Vector2(.5f,.5f);if(!atlasCatalogLoaded){atlasCatalogLoaded=true;var data=Resources.Load<TextAsset>("Art/atlas_layout");if(data)atlasCatalog=JsonUtility.FromJson<AtlasCatalog>(data.text);}var layout=atlasCatalog?.atlases?.FirstOrDefault(a=>a.name==atlas);var cell=layout?.cells?.FirstOrDefault(c=>c.index==row*columns+column);if(cell!=null){Vector2 originalRoot=rect.position+Vector2.Scale(root,rect.size);rect=new Rect(cell.x,cell.y,cell.w,cell.h);root=pivot.HasValue?new Vector2((originalRoot.x-rect.x)/rect.width,(originalRoot.y-rect.y)/rect.height):new Vector2(.5f,.5f);}var sprite=Sprite.Create(t,rect,root,h);sprites[key]=sprite;return sprite;}
+ Sprite MutationSprite(int id,int rank,int frame){int r=Mathf.Clamp(rank,1,5);string key="evo_"+id+"_"+r+"_"+frame;if(sprites.TryGetValue(key,out var cached))return cached;string atlas="evolution_"+MutationAtlases[id];var t=Resources.Load<Texture2D>("Art/"+atlas);Vector2 pivot=new Vector2(.5f,.5f);if(t&&(id<5||id>=10)){float w=t.width/4f,h=t.height/5f;int minX=31,maxX=0,minY=31,maxY=0;for(int x=0;x<32;x++)for(int y=0;y<32;y++)if(t.GetPixel(Mathf.Min(t.width-1,(int)((frame+(x+.5f)/32)*w)),Mathf.Min(t.height-1,(int)((5-r+(y+.5f)/32)*h))).a>.3f){minX=Mathf.Min(minX,x);maxX=Mathf.Max(maxX,x);minY=Mathf.Min(minY,y);maxY=Mathf.Max(maxY,y);}if(minX<=maxX){if(id==11)pivot=new Vector2((minX+maxX+1)/64f,(minY+1)/32f);else{float sum=0,count=0;int edge=minX+Mathf.Max(1,(maxX-minX)/5);for(int x=minX;x<=edge;x++)for(int y=minY;y<=maxY;y++)if(t.GetPixel((int)((frame+(x+.5f)/32)*w),(int)((5-r+(y+.5f)/32)*h)).a>.3f){sum+=y+.5f;count++;}pivot=new Vector2((minX+1)/32f,count>0?sum/count/32f:.5f);}}}return AtlasFrame(key,atlas,4,5,frame,r-1,id>=5&&id<=9?(Vector2?)null:pivot)??Art(EvolutionData.Icons[id]);}
+ Sprite Art(string key){if(sprites.TryGetValue(key,out var s))return s;if(key.Length==5&&key.StartsWith("zero")&&key[4]>='0'&&key[4]<='5'){s=AtlasFrame(key,"zero_concept",6,1,key[4]-'0',0);if(s)return s;}if(key.Length>1&&char.IsDigit(key[key.Length-1])){string species=key.Substring(0,key.Length-1);int row=species=="ant"?0:species=="spider"?1:species=="pill"?2:species=="boss"?3:-1;if(row>=0){s=AtlasFrame(key,"enemy_evolved",4,4,key[key.Length-1]-'0',row);if(s)return s;}}var t=Resources.Load<Texture2D>("Art/"+key);if(!t){t=Texture2D.whiteTexture;}t.filterMode=FilterMode.Point;s=Sprite.Create(t,new Rect(0,0,t.width,t.height),new Vector2(.5f,.5f),32);sprites[key]=s;return s;}
  SpriteRenderer Render(string name,string art,Vector2 p,int order,Transform parent=null){var g=new GameObject(name);g.transform.SetParent(parent?parent:world);g.transform.position=new Vector3(p.x,p.y,0);var s=g.AddComponent<SpriteRenderer>();s.sprite=Art(art);s.sortingOrder=order;return s;}
  void BuildGarden(){
   // Combine 3072 grass tiles into one mesh to keep draw calls low.
@@ -74,14 +87,18 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void Fence(Vector2 p){var s=Render("Límite del jardín","rock",p,-20,decorations);s.transform.localScale=new Vector3(2.3f,1.3f,1);s.color=EvolutionData.C("788a6a");}
  static int Order(float y)=>100-Mathf.RoundToInt(y*5);
- void CreatePlayer(){shadow=Render("Sombra Zer0","shadow",pos,-15,actors);player=Render("Zer0","zero0",pos,100,actors);player.transform.localScale=Vector3.one*1.35f;for(int i=0;i<12;i++){parts[i]=Render(EvolutionData.Names[i],EvolutionData.Icons[i],pos,110,actors);parts[i].enabled=false;}}
+ void CreatePlayer(){shadow=Render("Sombra Zer0","shadow",pos,-15,actors);player=Render("Zer0","zero0",pos,100,actors);player.transform.localScale=Vector3.one*1.35f;for(int i=0;i<12;i++){parts[i]=Render(EvolutionData.Names[i],EvolutionData.Icons[i],pos,110,actors);parts[i].enabled=false;}crabMirror=Render("Pinza izquierda","crab",pos,110,actors);crabMirror.enabled=false;}
+ Vector2 BodyRight=>new Vector2(facing.y,-facing.x);
+ SpriteRenderer Glow(string name,Vector2 position,float size,Color color,int order){var go=new GameObject(name);go.transform.SetParent(world);go.transform.position=position;go.transform.localScale=Vector3.one*size;var sr=go.AddComponent<SpriteRenderer>();sr.sprite=glowSprite;sr.sharedMaterial=glowMaterial;sr.color=color;sr.sortingOrder=order;return sr;}
+ Vector2 BodyPoint(Vector2 local)=>pos+BodyRight*local.x+facing*local.y;
+ Vector2 MountLocal(int id)=>Mounts[id];
  bool Blocked(Vector2 p,float pad=.3f){if(p.x<-31+pad||p.x>31-pad||p.y<-23+pad||p.y>23-pad)return true;foreach(var r in solids)if(p.x>r.xMin-pad&&p.x<r.xMax+pad&&p.y>r.yMin-pad&&p.y<r.yMax+pad)return true;return false;}
  Vector2 Move(Vector2 p,Vector2 delta,float pad=.3f){Vector2 q=p;if(!Blocked(q+new Vector2(delta.x,0),pad))q.x+=delta.x;if(!Blocked(q+new Vector2(0,delta.y),pad))q.y+=delta.y;return q;}
  float GroundSpeed(Vector2 p){foreach(var r in puddles)if(r.Contains(p))return .75f;return 1;}
  bool Sight(Vector2 a,Vector2 b){float d=Vector2.Distance(a,b);for(float t=.2f;t<d;t+=.35f)if(Blocked(Vector2.Lerp(a,b,t/d),0))return false;return true;}
  void StartRun(){
   foreach(var e in enemies){e.go.SetActive(false);enemyPool.Enqueue(e);}enemies.Clear();foreach(var d in drops){d.sr.gameObject.SetActive(false);dropPool.Enqueue(d.sr);}drops.Clear();foreach(var f in effects)Destroy(f.sr.gameObject);effects.Clear();foreach(var m in markers)Destroy(m.line.gameObject);markers.Clear();texts.Clear();
-  Array.Clear(ranks,0,12);Array.Clear(cooldowns,0,5);ranks[0]=1;hp=maxHp=100;clock=0;xp=0;level=1;kills=0;pending=0;totalDamage=0;spawnCredit=0;invulnerable=1;withoutDamage=0;shellTimer=0;boss=null;bossSpawned=elite1=elite2=won=false;pos=new Vector2(0,-10);facing=Vector2.up;cam.transform.position=new Vector3(0,-10,-10);player.enabled=true;mode=Mode.Intro;introTime=0;PlayMusic(gardenTrack);Banner("EL JARDÍN DE LOS DESCARTES",4);UpdatePlayerArt();
+  Array.Clear(ranks,0,12);Array.Clear(cooldowns,0,5);Array.Clear(attackPose,0,5);ranks[0]=1;hp=maxHp=100;clock=0;xp=0;level=1;kills=0;pending=0;totalDamage=0;spawnCredit=0;invulnerable=1;withoutDamage=0;shellTimer=0;boss=null;bossSpawned=elite1=elite2=won=false;pos=new Vector2(0,-10);facing=Vector2.up;cam.transform.position=new Vector3(0,-10,-10);player.enabled=true;mode=Mode.Intro;introTime=0;PlayMusic(gardenTrack);Banner("EL JARDÍN DE LOS DESCARTES",4);UpdatePlayerArt();
  }
  void Update(){
   if(mode==Mode.Logo){logoTime+=Time.unscaledDeltaTime;if(!logoSoundPlayed&&logoTime>=.1f){logoSoundPlayed=true;var sting=Resources.Load<AudioClip>("Audio/logo");if(sting)sfx.PlayOneShot(sting,.7f);}if(logoTime>=4f||Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape)||Input.GetMouseButtonDown(0))mode=Mode.Menu;return;}
@@ -90,13 +107,15 @@ public sealed class DemoGame:MonoBehaviour {
   if(mode==Mode.Upgrade){if(Input.GetKeyDown(KeyCode.RightArrow)||Input.GetKeyDown(KeyCode.D))selected=(selected+1)%offers.Length;if(Input.GetKeyDown(KeyCode.LeftArrow)||Input.GetKeyDown(KeyCode.A))selected=(selected+offers.Length-1)%offers.Length;if(Time.unscaledTime>upgradeLock){if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.Space))Choose(selected);for(int i=0;i<offers.Length;i++)if(Input.GetKeyDown(KeyCode.Alpha1+i))Choose(i);}return;}
   if(mode!=Mode.Playing)return;
   float dt=Mathf.Min(Time.deltaTime,.05f);clock+=dt;bannerTime-=dt;sfxLimiter-=dt;invulnerable-=dt;withoutDamage+=dt;shellTimer=Mathf.Max(0,shellTimer-dt);shakeTime-=dt;
-  Vector2 input=new Vector2((Input.GetKey(KeyCode.D)||Input.GetKey(KeyCode.RightArrow)?1:0)-(Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.LeftArrow)?1:0),(Input.GetKey(KeyCode.W)||Input.GetKey(KeyCode.UpArrow)?1:0)-(Input.GetKey(KeyCode.S)||Input.GetKey(KeyCode.DownArrow)?1:0));input=Vector2.ClampMagnitude(input,1);if(input.sqrMagnitude>.01f)facing=input.normalized;
+  for(int i=0;i<5;i++)attackPose[i]=Mathf.Max(0,attackPose[i]-dt);
+  Vector2 input=new Vector2((Input.GetKey(KeyCode.D)||Input.GetKey(KeyCode.RightArrow)?1:0)-(Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.LeftArrow)?1:0),(Input.GetKey(KeyCode.W)||Input.GetKey(KeyCode.UpArrow)?1:0)-(Input.GetKey(KeyCode.S)||Input.GetKey(KeyCode.DownArrow)?1:0));input=Vector2.ClampMagnitude(input,1);isMoving=input.sqrMagnitude>.01f;if(isMoving)facing=input.normalized;
   float speedBonus=Mathf.Min(.5f,(EvolutionData.Value(5,ranks[5])+EvolutionData.Value(6,ranks[6])+EvolutionData.Value(7,ranks[7]))/100);
   pos=Move(pos,input*3*(1+speedBonus)*GroundSpeed(pos)*dt);
+  movementVelocity=input*3*(1+speedBonus)*GroundSpeed(pos);
   if(withoutDamage>=5)hp=Mathf.Min(maxHp,hp+(1+EvolutionData.Value(8,ranks[8])+EvolutionData.Value(11,ranks[11]))*dt);
-  Waves(dt);UpdateEnemies(dt);if(hp<=0){Finish(false);return;}
-  Attacks(dt);UpdateEffects(dt);Collect(dt);UpdatePlayerArt();
-  if(boss!=null&&boss.dead){Finish(true);return;}if(pending>0)OpenUpgrade();
+  Waves(dt);UpdateEnemies(dt);if(ResolveOutcome())return;
+  Attacks(dt);UpdateEffects(dt);Collect(dt);UpdatePlayerArt();UpdateAtmosphere(dt);
+  if(ResolveOutcome())return;if(pending>0)OpenUpgrade();
   Vector2 cp=new Vector2(Mathf.Clamp(pos.x,-32+cam.orthographicSize*cam.aspect,32-cam.orthographicSize*cam.aspect),Mathf.Clamp(pos.y,-24+cam.orthographicSize,24-cam.orthographicSize));Vector3 target=new Vector3(cp.x,cp.y,-10);cam.transform.position=Vector3.Lerp(cam.transform.position,target,1-Mathf.Exp(-dt*9));if(shakeTime>0)cam.transform.position+=(Vector3)(Random.insideUnitCircle*.07f*settings.shake);
   #if UNITY_EDITOR || DEVELOPMENT_BUILD
   if(Input.GetKeyDown(KeyCode.F8)){clock=480;SpawnBoss();}if(Input.GetKeyDown(KeyCode.F9)){xp+=200;LevelCheck();}if(Input.GetKeyDown(KeyCode.F7))hp=maxHp;
@@ -107,29 +126,32 @@ public sealed class DemoGame:MonoBehaviour {
  void OnApplicationFocus(bool focus){if(!focus&&mode==Mode.Playing)mode=Mode.Pause;}
  void Waves(float dt){
   if(clock>=480){if(!bossSpawned)SpawnBoss();return;}if(clock<3)return;
-  float rate=clock<60?1:clock<120?1.5f:clock<240?2:clock<360?2.5f:3;int limit=clock<60?35:clock<120?50:clock<240?75:clock<360?100:120;
+  float rate=SpawnRate(clock);int limit=clock<60?35:clock<120?55:clock<240?80:clock<360?115:150;
   spawnCredit+=dt*rate;while(spawnCredit>=1){spawnCredit-=1;if(enemies.Count(e=>!e.dead)>=limit)continue;float r=Random.value;int type=clock<60?0:clock<120?(r<.8?0:1):(r<(clock<240?.6:.45)?0:r<.8?1:2);TrySpawn(type);}
   if(clock>=180&&!elite1){elite1=true;TrySpawn(3);Banner("UNA HORMIGA ALFA SE ACERCA",3);}if(clock>=360&&!elite2){elite2=true;TrySpawn(3);Banner("EL JARDÍN SE AGITA",3);}
  }
+ static float SpawnRate(float time)=>time<60?1.1f:time<120?1.9f:time<240?2.8f:time<360?3.8f:5.2f;
+ static float Pressure(float time)=>Mathf.Clamp01(time/480f);
  void TrySpawn(int type){for(int k=0;k<16;k++){Vector2 p=pos+Random.insideUnitCircle.normalized*Random.Range(13f,18f);var v=cam.WorldToViewportPoint(p);if(!Blocked(p,.6f)&&(v.x<-.08f||v.x>1.08f||v.y<-.08f||v.y>1.08f)){Spawn(type,p);return;}}}
- void SpawnBoss(){if(bossSpawned)return;bossSpawned=true;boss=Spawn(4,new Vector2(0,12));boss.timer=2;boss.phase=-1;Banner("DEPREDADOR ALFA · ARAÑA LOBO",4);Circle(boss.pos,2.2f,2,Red);PlayMusic(bossTrack);Tone(100,.6f,.45f);}
+ void SpawnBoss(){if(bossSpawned)return;bossSpawned=true;boss=Spawn(4,new Vector2(0,12));boss.timer=2;boss.phase=-1;Banner("DEPREDADOR ALFA · ARAÑA LOBO",4);PlayMusic(bossTrack);Tone(100,.6f,.45f);}
  Enemy Spawn(int type,Vector2 p){
   Enemy e;if(enemyPool.Count>0)e=enemyPool.Dequeue();else{e=new Enemy();e.go=new GameObject("Enemigo");e.go.transform.SetParent(actors);e.sr=e.go.AddComponent<SpriteRenderer>();}
-  e.go.SetActive(true);e.go.name=new[]{"Hormiga","Araña","Bicho bolita","Hormiga alfa","Araña Lobo"}[type];e.type=type;e.pos=p;e.dead=false;e.phase=0;e.timer=0;e.cooldown=type==0?1:3;e.flash=0;e.attack=0;
-  e.frame=0;e.max=new float[]{20,35,65,180,2400}[type]*(type<3?1+.08f*Mathf.Floor(clock/60):1);e.hp=e.max;e.speed=new float[]{1.45f,1.7f,.9f,1.5f,1.1f}[type];e.damage=new float[]{8,12,15,18,20}[type];e.sr.sprite=Art(type==4?"boss0":type==2?"pill0":type==1?"spider0":"ant0");e.go.transform.position=p;e.go.transform.localScale=Vector3.one*(type==4?1.65f:type==3?1.65f:1.15f);enemies.Add(e);return e;
+  e.go.SetActive(true);e.go.name=new[]{"Hormiga","Araña","Bicho bolita","Hormiga alfa","Araña Lobo"}[type];e.type=type;e.pos=p;e.dead=false;e.phase=0;e.timer=0;e.cooldown=type==4?3:type==0?Random.Range(.6f,1.2f):Random.Range(2.3f,3.5f);e.flash=0;e.attack=0;
+  float pressure=Pressure(clock);e.frame=0;e.max=new float[]{20,35,65,180,2400}[type]*(type<3?1+1.28f*pressure:type==3?1+.72f*pressure:1);e.hp=e.max;e.speed=new float[]{1.45f,1.7f,.9f,1.5f,1.1f}[type]*(type<4?1+.24f*pressure:1);e.damage=new float[]{8,12,15,18,20}[type]*(type<4?1+.48f*pressure:1);e.sr.sprite=Art(type==4?"boss0":type==2?"pill0":type==1?"spider0":"ant0");e.go.transform.position=p;e.go.transform.localScale=Vector3.one*(type==4?3.3f:type==3?1.65f:1.15f);enemies.Add(e);return e;
  }
  void UpdateEnemies(float dt){
   for(int index=enemies.Count-1;index>=0;index--){Enemy e=enemies[index];if(e.dead)continue;e.timer-=dt;e.cooldown-=dt;e.flash-=dt;Vector2 to=pos-e.pos;float distance=to.magnitude;
    if(e.type==4){BossTick(e,dt,to,distance);}else{
-    if(e.phase==0){EnemyMove(e,to.normalized,e.speed*dt*GroundSpeed(e.pos));if((e.type==0||e.type==3)?distance<1.2f&&e.cooldown<=0:e.cooldown<=0){e.dir=to.normalized;e.phase=1;e.timer=e.type==0?.3f:e.type==3?.4f:e.type==1?.65f:.85f;Line(e.pos,e.pos+e.dir*(e.type==0?1.3f:3),e.timer,Red);}}
+    if(e.phase==0){Vector2 approach=to.normalized;if(e.type==1&&distance>2){Vector2 side=new Vector2(-approach.y,approach.x);approach=(approach+side*Mathf.Sin(clock*1.1f+index)*.5f).normalized;}EnemyMove(e,approach,e.speed*dt*GroundSpeed(e.pos));if((e.type==0||e.type==3)?distance<1.2f&&e.cooldown<=0:e.cooldown<=0){e.dir=(to+(e.type==1?movementVelocity*.25f:Vector2.zero)).normalized;e.phase=1;e.timer=(e.type==0?.3f:e.type==3?.4f:e.type==1?.65f:.85f)*(1-.18f*Pressure(clock));}}
     else if(e.phase==1 && e.timer<=0){e.phase=2;e.timer=e.type==0||e.type==3?.15f:e.type==1?.5f:.75f;Tone(e.type==2?90:220,.08f,.12f);}
-    else if(e.phase==2){if(e.type==1||e.type==2)EnemyMove(e,e.dir,dt*(e.type==1?5:4));if(Vector2.Distance(pos,e.pos)<(e.type==0||e.type==3?.9f:.75f))PlayerDamage(e.damage);if(e.timer<=0){e.phase=3;e.timer=e.type==2?1:.65f;}}
-    else if(e.phase==3&&e.timer<=0){e.phase=0;e.cooldown=e.type==0?1:e.type==3?1.4f:e.type==1?3:5;}
+    else if(e.phase==2){EnemyMove(e,e.dir,dt*(e.type==0?3.2f:e.type==3?3.8f:e.type==1?5:4)*(1+.12f*Pressure(clock)));if(Vector2.Distance(pos,e.pos)<(e.type==0||e.type==3?.9f:.75f))PlayerDamage(e.damage);if(e.timer<=0){e.phase=3;e.timer=e.type==2?1:.65f;}}
+    else if(e.phase==3&&e.timer<=0){e.phase=0;e.cooldown=(e.type==0?1:e.type==3?1.4f:e.type==1?3:5)*(1-.2f*Pressure(clock));}
     if(e.phase==0&&distance<.65f)PlayerDamage(e.damage);
    }
-   int frame=Mathf.FloorToInt(clock*(e.phase==0?8:12))%4;e.sr.sprite=Art((e.type==4?"boss":e.type==2?"pill":e.type==1?"spider":"ant")+frame);
-   e.go.transform.position=e.pos;e.sr.sortingOrder=Order(e.pos.y);e.sr.color=e.flash>0?Color.white:e.type==3?EvolutionData.C("f0cc8d"):e.phase==1?Color.Lerp(Color.white,Red,.5f+Mathf.Sin(clock*22)*.3f):Color.white;
-   e.go.transform.rotation=Quaternion.Euler(0,0,Mathf.Atan2(to.y,to.x)*Mathf.Rad2Deg-90);
+   int frame=Mathf.FloorToInt(clock*(e.phase==0?8:12)+index*.7f)%4;e.sr.sprite=Art((e.type==4?"boss":e.type==2?"pill":e.type==1?"spider":"ant")+frame);
+   float leap=e.type==4&&e.phase==5?Mathf.Sin(Mathf.Clamp01(1-e.timer/.45f)*Mathf.PI)*.9f:0;e.go.transform.position=e.pos+Vector2.up*leap;e.sr.sortingOrder=Order(e.pos.y);e.sr.color=e.flash>0?Color.white:e.type==3?EvolutionData.C("f0cc8d"):e.phase==1?Color.Lerp(Color.white,Red,.5f+Mathf.Sin(clock*22)*.3f):Color.white;
+   Vector2 look=e.phase==1||e.phase==2?e.dir:e.type==4&&(e.phase==4||e.phase==5)?e.target-e.pos:to;if(look.sqrMagnitude>.001f)e.go.transform.rotation=Quaternion.Euler(0,0,Mathf.Atan2(look.y,look.x)*Mathf.Rad2Deg-90);
+   float baseSize=e.type==4?3.3f:e.type==3?1.65f:1.15f;e.go.transform.localScale=new Vector3(baseSize*(e.phase==1?1.08f:e.phase==2?.88f:1),baseSize*(e.phase==1?.86f:e.phase==2?1.17f:1),1);
   }
  }
  void EnemyMove(Enemy e,Vector2 dir,float step){
@@ -139,16 +161,16 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void BossTick(Enemy e,float dt,Vector2 to,float distance){
   if(e.phase==-1){if(e.timer<=0){e.phase=0;e.timer=2;}return;}
-  if(e.hp<=e.max*.5f&&e.frame==0&&(e.phase==0||e.phase==3)){e.frame=1;e.phase=7;e.timer=1;Banner("ARAÑA LOBO · FRENESÍ",2);Circle(e.pos,2.8f,1,Red);return;}
+  if(e.hp<=e.max*.5f&&e.frame==0&&(e.phase==0||e.phase==3)){e.frame=1;e.phase=7;e.timer=1;Banner("ARAÑA LOBO · FRENESÍ",2);return;}
   if(e.phase==7){if(e.timer<=0){e.phase=0;e.timer=1;}return;}
-  if(e.cooldown<=0){e.cooldown=12;for(int i=0;i<4;i++){Vector2 p=e.pos+Random.insideUnitCircle.normalized*3;if(!Blocked(p)&&Vector2.Distance(p,pos)>2&&enemies.Count<125)Spawn(0,p);}}
+  if(e.cooldown<=0){e.cooldown=e.frame==0?10:9;int adds=enemies.Count(a=>!a.dead&&a.type!=4);for(int i=0;i<(e.frame==0?4:6)&&adds<16;i++){Vector2 p=e.pos+Random.insideUnitCircle.normalized*3;if(!Blocked(p)&&Vector2.Distance(p,pos)>2){Spawn(0,p);adds++;}}}
   switch(e.phase){
-   case 0:EnemyMove(e,to.normalized,e.speed*dt);if(distance<1.3f)PlayerDamage(20);if(e.timer<=0){e.phase=1;e.timer=e.frame==0?.9f:.75f;e.dir=to.normalized;Line(e.pos,e.pos+e.dir*5,e.timer,Red);}break;
+   case 0:EnemyMove(e,to.normalized,e.speed*dt);if(distance<1.3f)PlayerDamage(20);if(e.timer<=0){e.phase=1;e.timer=e.frame==0?.9f:.75f;e.dir=to.normalized;}break;
    case 1:if(e.timer<=0){e.phase=2;e.timer=1;Tone(75,.2f,.25f);}break;
-   case 2:EnemyMove(e,e.dir,5*dt);if(Vector2.Distance(pos,e.pos)<1.5f)PlayerDamage(25);if(e.timer<=0){if(e.frame==1&&e.attack==0){e.attack=1;e.phase=1;e.dir=(pos-e.pos).normalized;e.timer=.75f;Line(e.pos,e.pos+e.dir*5,e.timer,Red);}else{e.attack=0;e.phase=3;e.timer=1.2f;}}break;
-   case 3:if(e.timer<=0){e.phase=4;e.timer=1;e.target=pos;Circle(e.target,e.frame==0?1.8f:2.2f,1,Red);}break;
+   case 2:EnemyMove(e,e.dir,5*dt);if(Vector2.Distance(pos,e.pos)<1.5f)PlayerDamage(25);if(e.timer<=0){if(e.frame==1&&e.attack==0){e.attack=1;e.phase=1;e.dir=(pos-e.pos).normalized;e.timer=.75f;}else{e.attack=0;e.phase=3;e.timer=1.2f;}}break;
+   case 3:if(e.timer<=0){e.phase=4;e.timer=1;e.target=pos;}break;
    case 4:if(e.timer<=0){e.phase=5;e.timer=.45f;e.dir=e.pos;}break;
-   case 5:e.pos=Vector2.Lerp(e.dir,e.target,1-e.timer/.45f);if(e.timer<=0){if(Blocked(e.pos,.8f))e.pos=e.dir;Circle(e.pos,e.frame==0?1.8f:2.2f,.25f,Gold);if(Vector2.Distance(pos,e.pos)<(e.frame==0?1.8f:2.2f))PlayerDamage(e.frame==0?25:28);e.phase=6;e.timer=1.5f;shakeTime=.2f;Tone(60,.18f,.3f);}break;
+   case 5:e.pos=Vector2.Lerp(e.dir,e.target,1-e.timer/.45f);if(e.timer<=0){if(Blocked(e.pos,.8f))e.pos=e.dir;Burst(e.pos,Gold,9);if(Vector2.Distance(pos,e.pos)<(e.frame==0?1.8f:2.2f))PlayerDamage(e.frame==0?25:28);e.phase=6;e.timer=1.5f;shakeTime=.2f;Tone(60,.18f,.3f);}break;
    case 6:if(e.timer<=0){e.phase=0;e.timer=2;}break;
   }
  }
@@ -157,15 +179,16 @@ public sealed class DemoGame:MonoBehaviour {
    var targets=new List<Enemy>();foreach(var e in enemies){if(e.dead||e.phase==-1||(e.type==4&&e.phase==7))continue;Vector2 v=e.pos-pos;float d=v.magnitude;bool hit=false;
     if(id==0)hit=d<reach&&Vector2.Dot(v.normalized,facing)>.342f;
     if(id==1)hit=d<reach&&Vector2.Dot(v.normalized,facing)>.5f;
-    if(id==2)hit=Mathf.Abs(v.x)<reach*.5f&&Mathf.Abs(v.y)<.65f;
-    if(id==3)hit=v.y<.2f&&v.y>-reach&&Mathf.Abs(v.x)<.6f;
-    if(id==4)hit=v.y>.25f&&v.y<1.7f&&Mathf.Abs(v.x)<reach*.5f;
+    float lateral=Vector2.Dot(v,BodyRight),forward=Vector2.Dot(v,facing);
+    if(id==2)hit=Mathf.Abs(lateral)<reach*.5f&&Mathf.Abs(forward)<.65f;
+    if(id==3)hit=forward<.2f&&forward>-reach&&Mathf.Abs(lateral)<.6f;
+    if(id==4)hit=forward>.25f&&forward<1.7f&&Mathf.Abs(lateral)<reach*.5f;
     if(hit&&Sight(pos,e.pos))targets.Add(e);
    }
    if(id==1&&targets.Count>0){targets.Sort((a,b)=>(a.pos-pos).sqrMagnitude.CompareTo((b.pos-pos).sqrMagnitude));targets.RemoveRange(1,targets.Count-1);}
    // A prepared automatic attack waits for a target instead of wasting its cooldown.
    if(targets.Count==0)continue;cooldowns[id]=EvolutionData.Interval[id][r];float damage=EvolutionData.Damage[id][r]*(1+EvolutionData.Value(10,ranks[10])/100);
-   Color col=EvolutionData.Colors[id];if(id==0)Arc(pos,facing,reach,.22f,col);else if(id==1)Line(pos,targets[0].pos,.18f,col);else if(id==2)Line(pos+Vector2.left*reach*.5f,pos+Vector2.right*reach*.5f,.2f,col);else if(id==3)Line(pos,pos+Vector2.down*reach,.18f,col);else Line(pos+new Vector2(-reach*.5f,1),pos+new Vector2(reach*.5f,1),.2f,col);
+   attackPose[id]=.36f;trailFrame[id]=-1;attackDirection[id]=(targets[0].pos-pos).normalized;
    foreach(var e in targets){Damage(e,damage);if(e.type!=4)e.pos=Move(e.pos,(e.pos-pos).normalized*(id==2?.25f:.1f));}if(sfxLimiter<=0){Tone(180+id*90,.08f,.18f);sfxLimiter=.07f;}
   }
  }
@@ -183,27 +206,41 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void Choose(int index){if(mode!=Mode.Upgrade||Time.unscaledTime<upgradeLock||index>=offers.Length)return;int id=offers[index];if(id==12)hp=Mathf.Min(maxHp,hp+20);else if(id==13){maxHp+=5;hp=Mathf.Min(maxHp,hp+5);}else{float old=EvolutionData.Value(9,ranks[9]);ranks[id]++;if(id==9){float add=EvolutionData.Value(9,ranks[9])-old;maxHp+=add;hp+=add;}}pending--;Burst(pos,Mint,14);Tone(1100,.2f,.22f);if(pending>0)OpenUpgrade();else{mode=Mode.Playing;UpdatePlayerArt();}}
  void UpdatePlayerArt(){
-  player.transform.position=pos;player.sortingOrder=Order(pos.y)+3;player.sprite=Art("zero"+(Mathf.FloorToInt(clock*9)%6));player.flipX=facing.x<-.1f;player.color=invulnerable>0&&!settings.reducedFlash?new Color(1,1,1,.55f+Mathf.PingPong(clock*6,.45f)):Color.white;
+  player.transform.position=pos;player.sortingOrder=Order(pos.y)+3;player.sprite=Art("zero"+(Mathf.FloorToInt(clock*(isMoving?9:3))%6));player.flipX=false;player.color=invulnerable>0&&!settings.reducedFlash?new Color(1,1,1,.55f+Mathf.PingPong(clock*6,.45f)):Color.white;
+  float bodyAngle=Mathf.Atan2(facing.y,facing.x)*Mathf.Rad2Deg-90;float recoil=attackPose.Max()/.36f;player.transform.localScale=new Vector3(1.35f*(1+.07f*recoil),1.35f*(1-.06f*recoil),1);player.transform.rotation=Quaternion.Euler(0,0,bodyAngle);
   shadow.transform.position=pos+Vector2.down*.35f;shadow.sortingOrder=Order(pos.y)-6;shadow.transform.localScale=Vector3.one*1.3f;
-  Vector2[] offsets={new Vector2(.6f,.1f),new Vector2(.35f,-.6f),new Vector2(-.65f,.05f),new Vector2(0,-.7f),new Vector2(0,.55f),new Vector2(0,.15f),new Vector2(0,-.1f),new Vector2(0,-.35f),new Vector2(0,-.25f),new Vector2(0,-.1f),new Vector2(0,.58f),new Vector2(0,.55f)};
-  for(int i=0;i<12;i++){var part=parts[i];part.enabled=ranks[i]>0;if(!part.enabled)continue;part.transform.position=pos+offsets[i];float size=.65f+.065f*ranks[i];if(i==5)size=1.75f+Mathf.Sin(clock*22)*.15f;if(i==6||i==7)size=1.45f+Mathf.Sin(clock*13)*.04f;if(i==8||i==9)size=.85f;part.transform.localScale=new Vector3(size,size,1);part.sortingOrder=Order(pos.y)+(i==5||i==6||i==7?-2:5+i);part.color=i==9?(shellTimer>0?new Color(1,1,1,.15f):Color.white):Color.white;part.transform.rotation=Quaternion.Euler(0,0,i<5?Mathf.Sin(clock*5+i)*8:0);}
+  for(int i=0;i<12;i++){var part=parts[i];part.enabled=ranks[i]>0;if(!part.enabled)continue;part.transform.position=BodyPoint(MountLocal(i));part.flipX=false;part.color=Color.white;
+   float size=i==5?1.55f:i==6||i==7?1.35f:i==8?.64f:i==9?.68f:i>=10?.65f:i==1?1.05f:.78f;
+   part.sortingOrder=Order(pos.y)+(i==5||i==6||i==7?1:i==8||i==9?4:i==1?2:8);
+   if(i>=5){part.sprite=MutationSprite(i,ranks[i],(i==6||i==7)&&!isMoving?0:Mathf.FloorToInt(clock*(i==5?(isMoving?14:6):7))%4);part.transform.rotation=Quaternion.Euler(0,0,bodyAngle+(i==10?90:0));part.transform.localScale=Vector3.one*size;if(i==9)part.color=shellTimer>0?new Color(1,1,1,.18f):new Color(1,1,1,.85f);continue;}
+   float progress=attackPose[i]>0?1-attackPose[i]/.36f:0;int frame=attackPose[i]>0?Mathf.Min(3,(int)(progress*4)):0;part.sprite=MutationSprite(i,ranks[i],frame);float pulse=attackPose[i]>0?Mathf.Sin(progress*Mathf.PI):0;
+   Vector2 direction=i==2?BodyRight:i==3?-facing:i==4?facing:attackPose[i]>0?(facing*.7f+attackDirection[i]*.3f).normalized:facing;
+   float angle=Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg+(i==0?Mathf.Lerp(-45,45,progress)*pulse:0);part.transform.rotation=Quaternion.Euler(0,0,angle);
+   part.transform.localScale=new Vector3(size*(1+.22f*pulse),size*(1+.08f*pulse),1);
+   if(attackPose[i]>0&&frame>0&&frame<3&&trailFrame[i]!=frame){AttackEcho(part,direction,EvolutionData.Colors[i]);trailFrame[i]=frame;}
+  }
+  crabMirror.enabled=ranks[2]>0;if(crabMirror.enabled){var right=parts[2];crabMirror.sprite=right.sprite;crabMirror.transform.position=BodyPoint(new Vector2(-MountLocal(2).x,MountLocal(2).y));crabMirror.transform.rotation=Quaternion.Euler(0,0,bodyAngle+180);crabMirror.transform.localScale=right.transform.localScale;crabMirror.sortingOrder=right.sortingOrder;crabMirror.color=right.color;}
  }
- void Burst(Vector2 p,Color color,int count){for(int i=0;i<count&&effects.Count<180;i++){SpriteRenderer s=fxPool.Count>0?fxPool.Dequeue():Render("Partícula","xp",p,300,actors);s.gameObject.SetActive(true);s.transform.position=p;s.transform.localScale=Vector3.one*Random.Range(.07f,.16f);effects.Add(new Fx{sr=s,vel=Random.insideUnitCircle*3,time=.35f,total=.35f,color=color});}}
- void UpdateEffects(float dt){for(int i=effects.Count-1;i>=0;i--){var f=effects[i];f.time-=dt;if(f.time<=0){f.sr.gameObject.SetActive(false);fxPool.Enqueue(f.sr);effects.RemoveAt(i);continue;}f.sr.transform.position+=(Vector3)(f.vel*dt);f.vel*=.9f;f.sr.color=new Color(f.color.r,f.color.g,f.color.b,f.time/f.total);}for(int i=texts.Count-1;i>=0;i--){texts[i].time-=dt;texts[i].pos+=Vector2.up*dt*.9f;if(texts[i].time<=0)texts.RemoveAt(i);}for(int i=markers.Count-1;i>=0;i--){markers[i].time-=dt;if(markers[i].time<=0){Destroy(markers[i].line.gameObject);markers.RemoveAt(i);}}
+ void AttackEcho(SpriteRenderer source,Vector2 direction,Color tint){if(effects.Count>=180)return;var echo=fxPool.Count>0?fxPool.Dequeue():Render("Rastro de ataque","xp",pos,120,actors);echo.gameObject.SetActive(true);echo.sprite=source.sprite;echo.sharedMaterial=source.sharedMaterial;echo.transform.position=source.transform.position;echo.transform.rotation=source.transform.rotation;echo.transform.localScale=source.transform.localScale;echo.sortingOrder=source.sortingOrder-1;tint.a=.3f;echo.color=tint;effects.Add(new Fx{sr=echo,vel=direction*.3f,time=.16f,total=.16f,color=tint});}
+ void UpdateAtmosphere(float dt){if(!glowMaterial)return;if(playerGlow){playerGlow.transform.position=pos;bool shield=ranks[9]>0&&shellTimer<=0;playerGlow.color=shield?new Color(.35f,.65f,1,.11f):new Color(.55f,.85f,.65f,.07f+Mathf.Sin(clock*2)*.015f);}if(bossGlow){bossGlow.enabled=boss!=null&&!boss.dead;if(bossGlow.enabled){bossGlow.transform.position=boss.pos;bossGlow.color=boss.frame==1?new Color(1,.2f,.12f,.12f):new Color(1,.55f,.25f,.08f);}}pollenTimer-=dt;if(pollenTimer>0)return;pollenTimer=.12f;Mote(pos+new Vector2(Random.Range(-11f,11f),Random.Range(-7f,7f)),new Vector2(.08f,.13f),Random.Range(.035f,.07f),2.2f,new Color(.95f,.85f,.5f,.45f));if(isMoving)Mote(pos-facing*.3f+Random.insideUnitCircle*.15f,-facing*.2f,.09f,.4f,new Color(.65f,.52f,.32f,.32f));if(boss!=null&&boss.phase==2)Mote(boss.pos-boss.dir*.7f,Vector2.zero,.2f,.45f,new Color(.75f,.5f,.3f,.4f));}
+ void Mote(Vector2 position,Vector2 velocity,float size,float life,Color color){if(effects.Count>=150||!glowMaterial)return;var sr=fxPool.Count>0?fxPool.Dequeue():Render("Polen y polvo","xp",position,-140,actors);sr.gameObject.SetActive(true);sr.sprite=glowSprite;sr.sharedMaterial=glowMaterial;sr.transform.position=position;sr.transform.rotation=Quaternion.identity;sr.transform.localScale=Vector3.one*size;sr.sortingOrder=-140;sr.color=color;effects.Add(new Fx{sr=sr,vel=velocity,time=life,total=life,color=color});}
+ void Burst(Vector2 p,Color color,int count){for(int i=0;i<count&&effects.Count<180;i++){SpriteRenderer s=fxPool.Count>0?fxPool.Dequeue():Render("Partícula","xp",p,300,actors);s.gameObject.SetActive(true);s.sprite=glowMaterial?glowSprite:Art("xp");s.sharedMaterial=glowMaterial?glowMaterial:player.sharedMaterial;s.sortingOrder=300;s.transform.rotation=Quaternion.identity;s.transform.position=p;s.transform.localScale=Vector3.one*Random.Range(.07f,.16f);effects.Add(new Fx{sr=s,vel=Random.insideUnitCircle*3,time=.35f,total=.35f,color=color});}}
+ void UpdateEffects(float dt){for(int i=effects.Count-1;i>=0;i--){var f=effects[i];f.time-=dt;if(f.time<=0){f.sr.gameObject.SetActive(false);fxPool.Enqueue(f.sr);effects.RemoveAt(i);continue;}f.sr.transform.position+=(Vector3)(f.vel*dt);f.vel*=.9f;f.sr.color=new Color(f.color.r,f.color.g,f.color.b,f.color.a*f.time/f.total);}for(int i=texts.Count-1;i>=0;i--){texts[i].time-=dt;texts[i].pos+=Vector2.up*dt*.9f;if(texts[i].time<=0)texts.RemoveAt(i);}for(int i=markers.Count-1;i>=0;i--){markers[i].time-=dt;if(markers[i].time<=0){Destroy(markers[i].line.gameObject);markers.RemoveAt(i);}}
   // Recycle dead enemies after the update pass, never while iterating attack targets.
   for(int i=enemies.Count-1;i>=0;i--)if(enemies[i].dead&&enemies[i]!=boss){enemyPool.Enqueue(enemies[i]);enemies.RemoveAt(i);}
  }
  LineRenderer Stroke(Vector2[] points,float duration,Color color,float width=.07f){var g=new GameObject("Señal de combate");g.transform.SetParent(actors);var lr=g.AddComponent<LineRenderer>();lr.sharedMaterial=lineMaterial;lr.startColor=lr.endColor=color;lr.startWidth=lr.endWidth=width;lr.positionCount=points.Length;lr.sortingOrder=290;lr.useWorldSpace=true;for(int i=0;i<points.Length;i++)lr.SetPosition(i,new Vector3(points[i].x,points[i].y,-.1f));markers.Add(new Marker{line=lr,time=duration});return lr;}
- void Line(Vector2 a,Vector2 b,float duration,Color c){Stroke(new[]{a,b},duration,c,.1f);Vector2 side=new Vector2(-(b-a).normalized.y,(b-a).normalized.x)*.2f;Stroke(new[]{b-(b-a).normalized*.4f+side,b,b-(b-a).normalized*.4f-side},duration,c,.07f);}
+ void Line(Vector2 a,Vector2 b,float duration,Color c){c.a=.34f;Stroke(new[]{a,b},duration,c,.045f);Vector2 side=new Vector2(-(b-a).normalized.y,(b-a).normalized.x)*.12f;Stroke(new[]{b-side,b+side},duration,c,.035f);}
  void Circle(Vector2 p,float r,float duration,Color c){var pts=new Vector2[49];for(int i=0;i<49;i++){float a=i/48f*Mathf.PI*2;pts[i]=p+new Vector2(Mathf.Cos(a),Mathf.Sin(a))*r;}Stroke(pts,duration,c);Stroke(new[]{p+new Vector2(-.2f,0),p+new Vector2(.2f,0)},duration,c);}
  void Arc(Vector2 p,Vector2 dir,float radius,float duration,Color c){float angle=Mathf.Atan2(dir.y,dir.x);var pts=new Vector2[22];pts[0]=p;for(int i=1;i<21;i++){float a=angle+Mathf.Lerp(-70,70,(i-1)/19f)*Mathf.Deg2Rad;pts[i]=p+new Vector2(Mathf.Cos(a),Mathf.Sin(a))*radius;}pts[21]=p;Stroke(pts,duration,c,.1f);}
  void Banner(string text,float seconds){banner=text;bannerTime=seconds;}
  void PlayMusic(AudioClip clip){if(music==null||!clip)return;music.clip=clip;music.Play();}
  void Tone(float freq,float duration,float volume){if(!sfx)return;int rate=22050,n=Mathf.CeilToInt(duration*rate);var data=new float[n];for(int i=0;i<n;i++){float t=i/(float)rate;data[i]=Mathf.Sin(t*freq*2*Mathf.PI*(1-.3f*t/duration))*Mathf.Sin(Mathf.PI*i/n)*volume;}var clip=AudioClip.Create("Síntesis de evento",n,1,rate,false);clip.SetData(data,0);sfx.PlayOneShot(clip,settings.effects);Destroy(clip,duration+1);}
+ bool ResolveOutcome(){if(hp<=0||clock>=600){clock=Mathf.Min(clock,600);Finish(false);return true;}if(boss!=null&&boss.dead){Finish(true);return true;}return false;}
  void Finish(bool victory){if(mode==Mode.Result)return;won=victory;mode=Mode.Result;int score=kills*10+level*100+(won?2000:0);settings.best=Mathf.Max(settings.best,score);Save();Tone(won?880:90,.6f,.35f);}
  void Load(){try{if(File.Exists(savePath))settings=JsonUtility.FromJson<Settings>(File.ReadAllText(savePath))??new Settings();}catch{settings=new Settings();}}
  void Save(){try{string temp=savePath+".tmp";File.WriteAllText(temp,JsonUtility.ToJson(settings,true));if(File.Exists(savePath))File.Copy(savePath,savePath+".bak",true);File.Copy(temp,savePath,true);}catch(Exception e){Debug.LogWarning("No se pudo guardar opciones: "+e.Message);}}
- void OnDestroy(){Time.timeScale=1;if(lineMaterial)Destroy(lineMaterial);}
+ void OnDestroy(){Time.timeScale=1;if(lineMaterial)Destroy(lineMaterial);if(glowMaterial)Destroy(glowMaterial);if(glowSprite)Destroy(glowSprite);}
  #if UNITY_EDITOR
  public void StartPreviews(){StartCoroutine(PreviewSequence());}
  System.Collections.IEnumerator PreviewSequence(){
@@ -218,6 +255,9 @@ public sealed class DemoGame:MonoBehaviour {
   xp=40;LevelCheck();OpenUpgrade();yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/04-mejoras.png");yield return null;
   pending=0;mode=Mode.Playing;pos=new Vector2(0,8);cam.transform.position=new Vector3(0,9,-10);SpawnBoss();yield return new WaitForSeconds(2.3f);mode=Mode.Pause;yield return new WaitForEndOfFrame();mode=Mode.Playing;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/05-jefe.png");yield return null;
   Finish(true);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/06-resultados.png");yield return null;
+  StartRun();mode=Mode.Playing;clock=20;bannerTime=0;cam.orthographicSize=2.8f;cam.transform.position=new Vector3(pos.x,pos.y,-10);ranks[0]=ranks[1]=ranks[5]=ranks[9]=1;attackPose[0]=attackPose[1]=.18f;attackDirection[0]=attackDirection[1]=facing;UpdatePlayerArt();yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/08-evolucion-rango1.png");yield return null;
+  ranks[0]=ranks[1]=ranks[5]=ranks[9]=5;attackPose[0]=attackPose[1]=.18f;UpdatePlayerArt();yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/09-evolucion-rango5.png");yield return null;
+  for(int pose=0;pose<4;pose++){attackPose[0]=.35f-pose*.085f;UpdatePlayerArt();yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot("Validation/Previews/10-ataque-"+pose+".png");yield return null;}cam.orthographicSize=8.5f;
   StartRun();mode=Mode.Menu;PlayMusic(menuTrack);File.WriteAllText("Validation/preview-result.txt","Six rendered previews complete. Staged scenarios for UI verification.");
  }
  public void RunSmokeTest(){
@@ -241,6 +281,19 @@ public sealed class DemoGame:MonoBehaviour {
     check(Mathf.Abs((1000-target.hp)-EvolutionData.Damage[id][rank-1])<.01f,$"Daño {EvolutionData.Names[id]} rango {rank}");
    }
    StartRun();mode=Mode.Playing;clock=479;Waves(1);check(!bossSpawned,"Jefe no aparece antes del minuto 8");clock=480;Waves(.01f);check(bossSpawned,"Director activa jefe al minuto 8");
+   hp=100;clock=599.9f;check(!ResolveOutcome(),"Antes de 10:00 la partida continúa");clock=600;check(ResolveOutcome()&&!won&&mode==Mode.Result,"10:00 causa derrota aunque quede vida");
+   StartRun();mode=Mode.Playing;clock=50;hp=0;check(ResolveOutcome()&&!won,"Vida cero mantiene derrota antes del límite");
+   StartRun();mode=Mode.Playing;clock=599;SpawnBoss();Damage(boss,9999);check(ResolveOutcome()&&won,"Derrotar jefe vivo antes de 10:00 da victoria");
+   StartRun();mode=Mode.Playing;clock=600;SpawnBoss();Damage(boss,9999);check(ResolveOutcome()&&!won,"El límite cumplido tiene prioridad sobre una baja tardía");
+   StartRun();mode=Mode.Playing;ranks[0]=2;ranks[1]=2;SpawnBoss();boss.phase=0;boss.pos=pos+Vector2.up;boss.go.transform.position=boss.pos;
+   float seconds=0;while(!boss.dead&&seconds<120){facing=((int)(seconds*2)%2==0)?Vector2.up:Vector2.down;Attacks(.05f);seconds+=.05f;}
+   check(boss.dead&&seconds<120,"Presupuesto de daño: tenaza y cola rango 2, 50% ventanas frontales, jefe en "+seconds.ToString("0.0")+" s (<120 s); prueba aislada sin conducta enemiga");
+   foreach(var forward in new[]{Vector2.up,Vector2.right,Vector2.down,Vector2.left})for(int id=0;id<5;id++){
+    StartRun();mode=Mode.Playing;Array.Clear(ranks,0,12);ranks[id]=1;facing=forward;var offset=id==2?BodyRight:id==3?-facing:facing;var target=Spawn(3,pos+offset);target.hp=1000;Attacks(.01f);check(Mathf.Abs(1000-target.hp-EvolutionData.Damage[id][0])<.01f,"Ataque anatómico "+id+" orientado "+forward);UpdatePlayerArt();check(Vector2.Distance(parts[id].transform.position,BodyPoint(MountLocal(id)))<.001f,"Raíz de mutación "+id+" unida al cuerpo");
+   }
+   for(int id=0;id<12;id++){check(Resources.Load<Texture2D>("Art/evolution_"+MutationAtlases[id])!=null,"Atlas evolutivo presente: "+MutationAtlases[id]);check(MutationSprite(id,1,0)!=MutationSprite(id,5,0),"Modelo distinto entre rango 1 y 5: "+MutationAtlases[id]);}
+   check(glowMaterial!=null&&glowMaterial.shader.isSupported,"Luz suave compatible con renderizado integrado");check(SpawnRate(0)<SpawnRate(120)&&SpawnRate(120)<SpawnRate(420),"Presión de aparición aumenta con el tiempo");
+   StartRun();mode=Mode.Playing;var early=Spawn(0,pos+Vector2.up*4);clock=420;var late=Spawn(0,pos+Vector2.up*5);check(late.hp>early.hp&&late.speed>early.speed&&late.damage>early.damage,"Enemigos tardíos más resistentes, rápidos y peligrosos");
    mode=Mode.Menu;PlayMusic(menuTrack);
   }catch(Exception ex){results.Add("FAIL EXCEPTION "+ex);Debug.LogException(ex);}
   Directory.CreateDirectory("Validation");File.WriteAllLines("Validation/smoke-results.txt",results);Debug.Log("Arthropod smoke: "+results.Count+" checks, "+results.Count(x=>x.StartsWith("FAIL"))+" failures");
@@ -253,9 +306,10 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void Box(Rect r,Color c){GUI.color=c;GUI.DrawTexture(r,white);GUI.color=Color.white;}
  void Text(Rect r,string t,int size=18,Color? color=null,TextAnchor align=TextAnchor.MiddleLeft){var st=new GUIStyle(label){fontSize=size,alignment=align,wordWrap=true};st.normal.textColor=color??Mint;GUI.Label(r,t,st);}
+ void DrawSprite(Rect area,Sprite sprite){var t=sprite.texture;var s=sprite.rect;float scale=Mathf.Min(area.width/s.width,area.height/s.height);var r=new Rect(area.center.x-s.width*scale/2,area.center.y-s.height*scale/2,s.width*scale,s.height*scale);GUI.DrawTextureWithTexCoords(r,t,new Rect(s.x/t.width,s.y/t.height,s.width/t.width,s.height/t.height),true);}
  void Border(Rect r,Color c,float t=1){Box(new Rect(r.x,r.y,r.width,t),c);Box(new Rect(r.x,r.yMax-t,r.width,t),c);Box(new Rect(r.x,r.y,t,r.height),c);Box(new Rect(r.xMax-t,r.y,t,r.height),c);}
  bool Btn(Rect r,string t,bool primary=false){bool hover=r.Contains(Event.current.mousePosition);Box(r,primary?(hover?EvolutionData.C("c9e5b7"):Mint):(hover?EvolutionData.C("2c4943"):Panel));Border(r,primary?Mint:EvolutionData.C("456055"));Text(r,t,18,primary?Bg:Mint,TextAnchor.MiddleCenter);bool clicked=GUI.Button(r,GUIContent.none,GUIStyle.none);if(clicked)Tone(500,.06f,.12f);return clicked;}
- void Icon(Rect r,int i){var texture=Art(EvolutionData.Icons[i]).texture;GUI.DrawTexture(r,texture,ScaleMode.ScaleToFit,true);}
+ void Icon(Rect r,int i,int rank=0){DrawSprite(r,MutationSprite(i,rank>0?rank:Mathf.Max(1,ranks[i]),0));}
  void Bar(Rect r,float value,Color color){Box(r,EvolutionData.C("132321"));Box(new Rect(r.x+2,r.y+2,(r.width-4)*Mathf.Clamp01(value),r.height-4),color);Border(r,EvolutionData.C("536b55"));}
  Vector2 ScreenPoint(Vector2 p){Vector3 v=cam.WorldToViewportPoint(p);return new Vector2(v.x*1280,(1-v.y)*720);}
  void OnGUI(){InitGui();GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(Screen.width/1280f,Screen.height/720f,1));
@@ -285,14 +339,14 @@ public sealed class DemoGame:MonoBehaviour {
   Text(new Rect(65,638,560,28),"01  EL JARDÍN DE LOS DESCARTES",14,Gold);Text(new Rect(65,669,580,20),"WASD / FLECHAS  ·  ATAQUES AUTOMÁTICOS  ·  ESC PAUSA",12,Muted);
   // Museum-like specimen card ties UI to the game's biological identity.
   var card=new Rect(766,100,420,500);Box(card,Panel);Border(card,EvolutionData.C("536c58"));Text(new Rect(792,119,370,25),"ESPÉCIMEN  000   /   ADN INESTABLE",13,Gold);
-  GUI.DrawTexture(new Rect(827,185+Mathf.Sin(Time.realtimeSinceStartup*1.5f)*5,292,270),Art("zero"+(int)(Time.realtimeSinceStartup*5)%6).texture,ScaleMode.ScaleToFit,true);
+  DrawSprite(new Rect(827,185+Mathf.Sin(Time.realtimeSinceStartup*1.5f)*5,292,270),Art("zero"+(int)(Time.realtimeSinceStartup*5)%6));
   Text(new Rect(796,465,355,38),"Zer0",34,Mint);Text(new Rect(796,514,350,56),"Absorbé ADN. Elegí tu anatomía.\nSobreviví al depredador alfa.",17,Muted);Text(new Rect(792,623,400,24),"RÉCORD LOCAL   "+settings.best.ToString("N0"),14,Gold);
  }
  void Hud(){
   Box(new Rect(0,0,1280,92),new Color(.04f,.09f,.085f,.94f));Box(new Rect(0,90,1280,1),EvolutionData.C("48604e"));
   Text(new Rect(24,9,350,23),"MUTACIONES   /   NIVEL "+level,12,Muted);
   int col=0;for(int i=0;i<12;i++)if(ranks[i]>0){Rect r=new Rect(24+col*48,37,40,40);Box(r,Panel);Border(r,EvolutionData.Colors[i]*.65f);Icon(new Rect(r.x+3,r.y+2,32,32),i);Text(new Rect(r.x+24,r.y+23,16,16),ranks[i].ToString(),11,Gold,TextAnchor.MiddleCenter);col++;}
-  Text(new Rect(535,9,210,44),$"{(int)clock/60:00}:{(int)clock%60:00}",31,Mint,TextAnchor.MiddleCenter);Text(new Rect(535,53,210,22),clock<480?"SOBREVIVÍ HASTA 08:00":"DERROTÁ A LA ARAÑA LOBO",11,Gold,TextAnchor.MiddleCenter);
+  Text(new Rect(535,9,210,44),$"{(int)clock/60:00}:{(int)clock%60:00}",31,Mint,TextAnchor.MiddleCenter);Text(new Rect(535,53,210,22),clock<480?"JEFE 08:00 · LÍMITE 10:00":"VENCÉ AL JEFE ANTES DE 10:00",11,Gold,TextAnchor.MiddleCenter);
   Text(new Rect(1060,15,190,28),kills+"  BAJAS",20,Gold,TextAnchor.MiddleRight);Text(new Rect(1040,49,210,22),"ESC   PAUSA",12,Muted,TextAnchor.MiddleRight);
   Vector2 pp=ScreenPoint(pos);Bar(new Rect(pp.x-31,pp.y-43,62,8),hp/maxHp,hp/maxHp<=.15f?Red:Mint);if(hp/maxHp<=.15f)Text(new Rect(pp.x-50,pp.y-68,100,20),"¡VIDA CRÍTICA!",12,Red,TextAnchor.MiddleCenter);
   if(ranks[9]>0)Text(new Rect(pp.x-50,pp.y+35,100,20),shellTimer>0?$"ESCUDO {shellTimer:0.0}s":"ESCUDO LISTO",10,EvolutionData.Colors[9],TextAnchor.MiddleCenter);
@@ -314,7 +368,7 @@ public sealed class DemoGame:MonoBehaviour {
  }
  void Upgrade(){Overlay();Text(new Rect(70,45,1140,28),"EVOLUCIÓN  /  NIVEL "+level,14,Gold,TextAnchor.MiddleCenter);Text(new Rect(70,87,1140,58),"Tu ADN quiere cambiar.",38,Mint,TextAnchor.MiddleCenter);Text(new Rect(70,148,1140,28),"Elegí una mutación · la partida está en pausa",17,Muted,TextAnchor.MiddleCenter);
   float w=330,gap=26,total=offers.Length*w+(offers.Length-1)*gap,start=(1280-total)/2;
-  for(int i=0;i<offers.Length;i++){int id=offers[i];var r=new Rect(start+i*(w+gap),209,w,365);Box(r,Panel);Border(r,i==selected?Gold:EvolutionData.C("3b584c"),i==selected?2:1);if(id<12){Icon(new Rect(r.x+22,r.y+20,66,66),id);Text(new Rect(r.x+105,r.y+20,205,30),ranks[id]==0?"NUEVA MUTACIÓN":$"RANGO {ranks[id]}  →  {ranks[id]+1}",12,Gold);Text(new Rect(r.x+105,r.y+51,205,24),EvolutionData.Tags[id],10,Muted);Text(new Rect(r.x+22,r.y+104,286,57),EvolutionData.Names[id],23,EvolutionData.Colors[id]);Text(new Rect(r.x+22,r.y+174,286,130),EvolutionData.Describe(id,ranks[id]+1),16,Mint,TextAnchor.UpperLeft);Text(new Rect(r.x+22,r.y+309,286,44),EvolutionData.Change(id,ranks[id]),13,Gold);}else{Text(new Rect(r.x+22,r.y+60,286,80),id==12?"Recuperar 20 de vida":"+5 de vida máxima",25,Mint);}
+  for(int i=0;i<offers.Length;i++){int id=offers[i];var r=new Rect(start+i*(w+gap),209,w,365);Box(r,Panel);Border(r,i==selected?Gold:EvolutionData.C("3b584c"),i==selected?2:1);if(id<12){Icon(new Rect(r.x+22,r.y+20,66,66),id,ranks[id]+1);Text(new Rect(r.x+105,r.y+20,205,30),ranks[id]==0?"NUEVA MUTACIÓN":$"RANGO {ranks[id]}  →  {ranks[id]+1}",12,Gold);Text(new Rect(r.x+105,r.y+51,205,24),EvolutionData.Tags[id],10,Muted);Text(new Rect(r.x+22,r.y+104,286,57),EvolutionData.Names[id],23,EvolutionData.Colors[id]);Text(new Rect(r.x+22,r.y+174,286,130),EvolutionData.Describe(id,ranks[id]+1),16,Mint,TextAnchor.UpperLeft);Text(new Rect(r.x+22,r.y+309,286,44),EvolutionData.Change(id,ranks[id]),13,Gold);}else{Text(new Rect(r.x+22,r.y+60,286,80),id==12?"Recuperar 20 de vida":"+5 de vida máxima",25,Mint);}
    if(Btn(new Rect(r.x+16,r.y+382,w-32,49),"ELEGIR   ["+(i+1)+"]",i==selected)&&Time.unscaledTime>upgradeLock)Choose(i);
   }
   Text(new Rect(100,661,1080,25),"← → seleccionar   ·   ENTER confirmar   ·   4 ataques y 4 pasivas como máximo",13,Muted,TextAnchor.MiddleCenter);
@@ -328,7 +382,7 @@ public sealed class DemoGame:MonoBehaviour {
   if(Btn(new Rect(650,480,330,43),"LÍMITE   "+settings.cap+" FPS")){settings.cap=settings.cap==30?60:settings.cap==60?120:30;QualitySettings.vSyncCount=0;Application.targetFrameRate=settings.cap;}
   if(Btn(new Rect(300,576,680,52),"GUARDAR Y VOLVER",true)){Save();mode=returnMode;}
  }
- void Results(){Overlay();Text(new Rect(180,69,920,28),won?"JARDÍN SUPERADO  /  FIN DE LA DEMOSTRACIÓN":"EL JARDÍN RECLAMA A SU PRESA",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(180,112,920,67),won?"La evolución continúa.":"Todavía podés evolucionar.",40,Mint,TextAnchor.MiddleCenter);
+ void Results(){Overlay();Text(new Rect(180,69,920,28),won?"JARDÍN SUPERADO  /  FIN DE LA DEMOSTRACIÓN":clock>=600?"TIEMPO AGOTADO  /  LÍMITE DE 10 MINUTOS":"EL JARDÍN RECLAMA A SU PRESA",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(180,112,920,67),won?"La evolución continúa.":"Todavía podés evolucionar.",40,Mint,TextAnchor.MiddleCenter);
   Text(new Rect(205,220,300,40),"TIEMPO",13,Muted);Text(new Rect(205,260,300,50),$"{(int)clock/60:00}:{(int)clock%60:00}",36,Gold);Text(new Rect(520,220,250,40),"BAJAS",13,Muted);Text(new Rect(520,260,250,50),kills.ToString(),36,Gold);Text(new Rect(850,220,240,40),"PUNTUACIÓN",13,Muted);Text(new Rect(850,260,240,50),(kills*10+level*100+(won?2000:0)).ToString("N0"),36,Gold);
   Border(new Rect(205,342,870,1),Muted);Text(new Rect(205,361,870,30),"ANATOMÍA FINAL   /   NIVEL "+level+"   /   DAÑO TOTAL "+totalDamage.ToString("N0"),14,Muted);int c=0;for(int i=0;i<12;i++)if(ranks[i]>0){Icon(new Rect(205+c*105,412,58,58),i);Text(new Rect(205+c*105,479,90,24),"RANGO "+ranks[i],12,EvolutionData.Colors[i]);c++;}
   if(Btn(new Rect(300,570,330,53),"VOLVER A EVOLUCIONAR",true))StartRun();if(Btn(new Rect(650,570,330,53),"MENÚ")){mode=Mode.Menu;PlayMusic(menuTrack);}

@@ -11,7 +11,7 @@ Abrir el proyecto con Unity Hub, esperar la importación y abrir `Assets/Scenes/
 - Acercarse a los cristales para absorber ADN.
 - Elegir mejoras con el ratón o 1/2/3; A/D o flechas y Enter también están disponibles con la vista Game enfocada.
 - Escape: pausa. Perder el foco también pausa el combate.
-- Sobrevivir ocho minutos y derrotar a la Araña Lobo.
+- La Araña Lobo aparece al minuto 8. Hay que derrotarla antes de 10:00 y seguir vivo. Vida en cero o alcanzar 10:00 causa derrota. Pausas y selección de mejoras no consumen tiempo.
 
 La cinemática tiene tres viñetas con avance automático, subtítulos y opción de saltarla. Después muestra los controles y espera la confirmación del jugador.
 
@@ -56,3 +56,5 @@ Sprites pixelados, música y efectos creados para este prototipo. Viñetas del C
 
 El proyecto conserva los créditos y la autoría del diseño original. No se agrega una licencia de redistribución al diseño del equipo sin su decisión.
 
+
+Las mutaciones tienen 60 modelos anatómicos (12 habilidades × 5 rangos), cada uno con cuatro cuadros. Los ataques usan puntos de unión que giran con Zer0, poses de golpe y estelas de movimiento. Los enemigos tienen nuevas marchas y anticipaciones. Ver Docs/Evolucion_visual.md para la progresión de cada parte.

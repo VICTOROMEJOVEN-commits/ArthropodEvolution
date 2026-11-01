@@ -179,3 +179,6 @@ Docs/*.pdf -filter -diff -merge -text
 Validation/Previews/*.png -filter -diff -merge -text
 Assets/Resources/Art/arthropod_logo.png -filter -diff -merge -text
 Assets/Resources/Audio/logo.wav -filter -diff -merge -text
+Assets/Resources/Art/evolution_*.png -filter -diff -merge -text
+Assets/Resources/Art/zero_concept.png -filter -diff -merge -text
+Assets/Resources/Art/enemy_evolved.png -filter -diff -merge -text
