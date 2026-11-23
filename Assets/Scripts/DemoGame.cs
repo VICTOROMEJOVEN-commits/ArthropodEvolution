@@ -391,7 +391,7 @@ public sealed class DemoGame:MonoBehaviour {
   Overlay();Text(new Rect(140,42,1000,28),"EL EQUIPO DETRÁS DE ZER0",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(140,83,1000,62),"BOVATITOS",45,Mint,TextAnchor.MiddleCenter);
   Text(new Rect(140,151,1000,27),"Cuatro especímenes. Un montón de mutaciones.",17,Muted,TextAnchor.MiddleCenter);
   string[] people={"Victor Ome Joven","Mauro Arcadigni","Santino Bovati","Brandon Emmanuel Li"};
-  string[] roles={"LEVEL DESIGNER","GAME ARTIST","LEAD PROGRAMMER","GAME DESIGNER"};
+  string[] roles={"LEAD PROGRAMMER","GAME ARTIST","LEVEL DESIGNER","GAME DESIGNER"};
   float beat=Time.realtimeSinceStartup*140f/60;int frame=(int)(beat*2)%4;
   for(int i=0;i<4;i++){
    Rect r=new Rect(140+(i%2)*510,204+(i/2)*190,490,170);Box(r,Panel);Border(r,EvolutionData.C("456055"));
