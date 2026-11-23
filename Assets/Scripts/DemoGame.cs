@@ -326,11 +326,11 @@ public sealed class DemoGame:MonoBehaviour {
   // Subtle display texture is drawn over the original artwork, preserving every detail.
   for(int y=0;y<720;y+=4)Box(new Rect(0,y,1280,1),new Color(.015f,.045f,.035f,.16f*fade));
   Box(new Rect(534,620,212,1),new Color(Gold.r,Gold.g,Gold.b,fade*.65f));
-  Text(new Rect(440,636,400,24),"B O V A T I T O S",14,new Color(Muted.r,Muted.g,Muted.b,fade),TextAnchor.MiddleCenter);
+  Text(new Rect(440,636,400,24),"B O T A V I T O S",14,new Color(Muted.r,Muted.g,Muted.b,fade),TextAnchor.MiddleCenter);
  }
  void Menu(){
   Box(new Rect(0,0,1280,720),new Color(.025f,.07f,.065f,.88f));Box(new Rect(0,0,690,720),new Color(.04f,.095f,.09f,.96f));Box(new Rect(64,72,36,3),Gold);
-  Text(new Rect(64,91,540,30),"B O V A T I T O S   /   DEMOSTRACIÓN",13,Gold);Text(new Rect(60,137,640,76),"ARTHROPOD",58,Mint);Text(new Rect(62,210,580,65),"EVOLUTION",51,Mint);Text(new Rect(65,300,510,68),"Del desagüe a la cima\nde la cadena alimenticia.",24,Muted);
+  Text(new Rect(64,91,540,30),"B O T A V I T O S   /   DEMOSTRACIÓN",13,Gold);Text(new Rect(60,137,640,76),"ARTHROPOD",58,Mint);Text(new Rect(62,210,580,65),"EVOLUTION",51,Mint);Text(new Rect(65,300,510,68),"Del desagüe a la cima\nde la cadena alimenticia.",24,Muted);
   if(Btn(new Rect(65,410,420,56),"ENTRAR AL JARDÍN     →",true))StartRun();
   if(Btn(new Rect(65,480,204,44),"OPCIONES")){returnMode=Mode.Menu;mode=Mode.Options;}
   if(Btn(new Rect(281,480,204,44),"CRÉDITOS")){mode=Mode.Credits;PlayMusic(creditsTrack);}
@@ -388,10 +388,10 @@ public sealed class DemoGame:MonoBehaviour {
   if(Btn(new Rect(300,570,330,53),"VOLVER A EVOLUCIONAR",true))StartRun();if(Btn(new Rect(650,570,330,53),"MENÚ")){mode=Mode.Menu;PlayMusic(menuTrack);}
  }
  void Credits(){
-  Overlay();Text(new Rect(140,42,1000,28),"EL EQUIPO DETRÁS DE ZER0",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(140,83,1000,62),"BOVATITOS",45,Mint,TextAnchor.MiddleCenter);
+  Overlay();Text(new Rect(140,42,1000,28),"EL EQUIPO DETRÁS DE ZER0",14,Gold,TextAnchor.MiddleCenter);Text(new Rect(140,83,1000,62),"BOTAVITOS",45,Mint,TextAnchor.MiddleCenter);
   Text(new Rect(140,151,1000,27),"Cuatro especímenes. Un montón de mutaciones.",17,Muted,TextAnchor.MiddleCenter);
   string[] people={"Victor Ome Joven","Mauro Arcadigni","Santino Bovati","Brandon Emmanuel Li"};
-  string[] roles={"LEVEL DESIGNER","GAME ARTIST","LEAD PROGRAMMER","GAME DESIGNER"};
+  string[] roles={"LEAD PROGRAMMER","GAME ARTIST","LEVEL DESIGNER","GAME DESIGNER"};
   float beat=Time.realtimeSinceStartup*140f/60;int frame=(int)(beat*2)%4;
   for(int i=0;i<4;i++){
    Rect r=new Rect(140+(i%2)*510,204+(i/2)*190,490,170);Box(r,Panel);Border(r,EvolutionData.C("456055"));
@@ -404,6 +404,7 @@ public sealed class DemoGame:MonoBehaviour {
  }
 }
 }
+
 
 
 

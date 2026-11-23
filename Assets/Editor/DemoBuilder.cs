@@ -29,7 +29,7 @@ public static class DemoBuilder {
    EditorSceneManager.SaveScene(scene,path);
   }
   EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(path,true)};
-  PlayerSettings.companyName="Bovatitos";PlayerSettings.productName="Arthropod Evolution";
+  PlayerSettings.companyName="Botavitos";PlayerSettings.productName="Arthropod Evolution";
   PlayerSettings.defaultScreenWidth=1280;PlayerSettings.defaultScreenHeight=720;
   PlayerSettings.runInBackground=false;PlayerSettings.resizableWindow=true;
   PlayerSettings.colorSpace=ColorSpace.Gamma;
@@ -43,3 +43,4 @@ public static class DemoBuilder {
   Debug.Log("Arthropod: 12 mutaciones, 5 rangos; datos válidos.");
  }
 }
+
